@@ -1,27 +1,44 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use serde::{Deserialize, Serialize};
 use std::fmt::Write;
 use std::fmt::{self};
-use zbus::zvariant::{DeserializeDict, OwnedValue, SerializeDict, Type, Value};
 
-#[derive(Debug, Clone, SerializeDict, DeserializeDict, Type, Value, OwnedValue)]
-#[zvariant(signature = "dict")]
-pub struct GpuDevice {
-    #[zvariant(rename = "Name")]
-    pub name: String,
-    #[zvariant(rename = "Default")]
-    pub is_default: bool,
-    #[zvariant(rename = "Discrete")]
-    pub is_discrete: bool,
-    #[zvariant(rename = "Environment")]
-    pub environment: Vec<EnvVar>,
-}
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use zbus::zvariant::{DeserializeDict, OwnedValue, SerializeDict, Type, Value};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Value, OwnedValue)]
 pub struct EnvVar {
     pub key: String,
     pub value: String,
+}
+
+#[derive(Debug, Clone, SerializeDict, DeserializeDict, Type, OwnedValue)]
+#[zvariant(signature = "dict")]
+pub struct GpuDevice {
+    pub name: String,
+    pub default: bool,
+    pub discrete: bool,
+    pub environment: Vec<EnvVar>,
+}
+
+impl From<GpuDevice> for Value<'_> {
+    fn from(gpu: GpuDevice) -> Self {
+        let mut fields = HashMap::new();
+        fields.insert("Name", Value::from(gpu.name));
+        fields.insert("Default", Value::from(gpu.default));
+        fields.insert("Discrete", Value::from(gpu.discrete));
+        fields.insert("Environment", Value::from(gpu.environment));
+        Value::from(fields)
+    }
+}
+
+impl TryFrom<Value<'_>> for GpuDevice {
+    type Error = zbus::zvariant::Error;
+
+    fn try_from(value: Value<'_>) -> zbus::zvariant::Result<Self> {
+        Self::try_from(value.try_to_owned()?)
+    }
 }
 
 impl EnvVar {
@@ -50,13 +67,13 @@ impl GpuDevice {
         writeln!(
             s,
             "  Default:     {}",
-            if self.is_default { "yes" } else { "no" }
+            if self.default { "yes" } else { "no" }
         )
         .unwrap();
         writeln!(
             s,
             "  Discrete:    {}",
-            if self.is_discrete { "yes" } else { "no" }
+            if self.discrete { "yes" } else { "no" }
         )
         .unwrap();
 
@@ -80,8 +97,8 @@ impl fmt::Display for GpuDevice {
             f,
             "  Name:        {}\n  Default:     {}\n  Discrete:    {}",
             self.name,
-            if self.is_default { "yes" } else { "no" },
-            if self.is_discrete { "yes" } else { "no" },
+            if self.default { "yes" } else { "no" },
+            if self.discrete { "yes" } else { "no" },
         )?;
 
         if !self.environment.is_empty() {

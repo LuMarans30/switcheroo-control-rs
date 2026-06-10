@@ -67,7 +67,7 @@ fn cmd_launch(gpus: &[GpuDevice], gpu: Option<u32>, args: &[String]) -> Result<(
             if gpus.is_empty() {
                 return Err(eyre!("No GPUs found on the system."));
             }
-            gpus.iter().position(|g| g.is_discrete).unwrap_or(0)
+            gpus.iter().position(|g| g.discrete).unwrap_or(0)
         }
     };
 

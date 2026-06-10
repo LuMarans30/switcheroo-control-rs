@@ -94,13 +94,13 @@ pub fn scan_drm_cards() -> Vec<GpuDevice> {
 
         let env = get_card_env(&device, &parent);
 
-        let is_default = parent
+        let default = parent
             .attribute_value("boot_vga")
             .and_then(|s| s.to_str())
             .map(|s| s.trim() == "1")
             .unwrap_or(false);
 
-        let is_discrete = device
+        let discrete = device
             .property_value("TAGS")
             .and_then(|s| s.to_str())
             .map(|tags| tags.contains(":switcheroo-discrete-gpu:"))
@@ -108,18 +108,18 @@ pub fn scan_drm_cards() -> Vec<GpuDevice> {
 
         cards.push(GpuDevice {
             name: get_card_name(&parent),
-            is_default,
-            is_discrete,
+            default,
+            discrete,
             environment: env,
         });
     }
 
     // Single GPU fallback
     if cards.len() == 1 {
-        cards[0].is_default = true;
+        cards[0].default = true;
     }
 
-    cards.sort_by_key(|b| std::cmp::Reverse(b.is_default));
+    cards.sort_by_key(|b| std::cmp::Reverse(b.default));
 
     cards
 }
