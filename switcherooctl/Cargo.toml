@@ -1,0 +1,17 @@
+[package]
+name = "switcherooctl"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "switcherooctl"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.6.1", features = ["derive"] }
+switcheroo-common = { path = "../switcheroo-common" }
+which = "8.0.3"
+zbus = { workspace = true }
+color-eyre = { workspace = true }
+tokio = { workspace = true }

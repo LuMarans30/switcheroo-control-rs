@@ -1,0 +1,105 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+use regex::Regex;
+use std::{borrow::Cow, sync::OnceLock};
+
+struct ReplaceString {
+    re: &'static str,
+    replacement: &'static str,
+}
+
+const REPLACEMENTS: &[ReplaceString] = &[
+    ReplaceString {
+        re: r"Mesa DRI ",
+        replacement: "",
+    },
+    ReplaceString {
+        re: r"Mesa Intel",
+        replacement: "Intel",
+    },
+    ReplaceString {
+        re: r"\(R\)",
+        replacement: "®",
+    },
+    ReplaceString {
+        re: r"\((tm|TM)\)",
+        replacement: "™",
+    },
+    ReplaceString {
+        re: r"(ATI|EPYC|AMD FX|Radeon|Ryzen|Threadripper|GeForce RTX) ",
+        replacement: "${1}™ ",
+    },
+    ReplaceString {
+        re: r"Gallium \d+\.\d+ on (.*)",
+        replacement: "$1",
+    },
+    ReplaceString {
+        re: r" CPU| Processor| \S+-Core| @ \d+\.\d+GHz",
+        replacement: "",
+    },
+    ReplaceString {
+        re: r" x86|/MMX|/SSE2|/PCIe",
+        replacement: "",
+    },
+    ReplaceString {
+        re: r" \([^)]*(DRM|MESA|LLVM)[^)]*\)?",
+        replacement: "",
+    },
+    ReplaceString {
+        re: r"Graphics Controller",
+        replacement: "Graphics",
+    },
+    ReplaceString {
+        re: r".*llvmpipe.*",
+        replacement: "Software Rendering",
+    },
+];
+
+fn compiled_regexes() -> &'static [(Regex, &'static str)] {
+    static REGEXES: OnceLock<Vec<(Regex, &'static str)>> = OnceLock::new();
+    REGEXES.get_or_init(|| {
+        REPLACEMENTS
+            .iter()
+            .map(|r| (Regex::new(r.re).expect("Invalid regex"), r.replacement))
+            .collect()
+    })
+}
+
+/// Mimics g_markup_escape_text to prevent Pango markup injection in GNOME
+fn escape_markup(text: &str) -> Cow<'_, str> {
+    if !text.contains(['&', '<', '>', '\'', '"']) {
+        return Cow::Borrowed(text);
+    }
+
+    let mut result = String::with_capacity(text.len() + 16);
+    for ch in text.chars() {
+        match ch {
+            '&' => result.push_str("&amp;"),
+            '<' => result.push_str("&lt;"),
+            '>' => result.push_str("&gt;"),
+            '\'' => result.push_str("&apos;"),
+            '"' => result.push_str("&quot;"),
+            _ => result.push(ch),
+        }
+    }
+    Cow::Owned(result)
+}
+
+pub fn info_cleanup(input: &str) -> String {
+    if input.is_empty() {
+        return String::new();
+    }
+
+    let mut pretty = escape_markup(input.trim());
+
+    for (re, replacement) in compiled_regexes() {
+        if let Cow::Owned(modified) = re.replace_all(pretty.as_ref(), *replacement) {
+            pretty = Cow::Owned(modified);
+        }
+    }
+
+    static WS_RE: OnceLock<Regex> = OnceLock::new();
+    let ws_re = WS_RE.get_or_init(|| Regex::new(r"[ \t\n\r]+").unwrap());
+
+    ws_re.replace_all(pretty.as_ref(), " ").into_owned()
+}
