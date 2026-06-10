@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use std::fmt::Write;
 use std::fmt::{self};
 
 use serde::{Deserialize, Serialize};
@@ -58,36 +57,6 @@ impl GpuDevice {
         for EnvVar { key, value } in &self.environment {
             cmd.env(key, value);
         }
-    }
-
-    pub fn format_list_entry(&self, idx: usize) -> String {
-        let mut s = String::new();
-        writeln!(s, "Device: {}", idx).unwrap();
-        writeln!(s, "  Name:        {}", self.name).unwrap();
-        writeln!(
-            s,
-            "  Default:     {}",
-            if self.default { "yes" } else { "no" }
-        )
-        .unwrap();
-        writeln!(
-            s,
-            "  Discrete:    {}",
-            if self.discrete { "yes" } else { "no" }
-        )
-        .unwrap();
-
-        if !self.environment.is_empty() {
-            let env_str = self
-                .environment
-                .iter()
-                .map(EnvVar::to_string)
-                .collect::<Vec<_>>()
-                .join(" ");
-            writeln!(s, "  Environment: {}", env_str).unwrap();
-        }
-
-        s
     }
 }
 
