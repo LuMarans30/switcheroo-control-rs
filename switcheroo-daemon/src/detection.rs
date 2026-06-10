@@ -83,7 +83,7 @@ pub fn scan_drm_cards() -> Vec<GpuDevice> {
 
     for device in devices {
         let devnode = device.devnode().and_then(|n| n.to_str()).unwrap_or("");
-        if !devnode.starts_with("/dev/dri/card") {
+        if !devnode.starts_with("/dev/dri/render") {
             continue;
         }
 
