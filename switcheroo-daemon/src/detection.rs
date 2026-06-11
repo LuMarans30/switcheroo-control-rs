@@ -125,7 +125,7 @@ pub fn scan_drm_cards() -> Vec<GpuDevice> {
     }
 
     // Fallback
-    if cards.len() == 1 || !cards.iter().any(|c| c.default) {
+    if !cards.is_empty() && (cards.len() == 1 || !cards.iter().any(|c| c.default)) {
         cards[0].default = true;
     }
 
