@@ -62,13 +62,9 @@ impl GpuDevice {
 
 impl fmt::Display for GpuDevice {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "  Name:        {}\n  Default:     {}\n  Discrete:    {}",
-            self.name,
-            if self.default { "yes" } else { "no" },
-            if self.discrete { "yes" } else { "no" },
-        )?;
+        writeln!(f, "  Name:        {}", self.name)?;
+        writeln!(f, "  Default:     {}", yes_no(self.default))?;
+        writeln!(f, "  Discrete:    {}", yes_no(self.discrete))?;
 
         if !self.environment.is_empty() {
             let env_str = self
@@ -77,9 +73,13 @@ impl fmt::Display for GpuDevice {
                 .map(EnvVar::to_string)
                 .collect::<Vec<_>>()
                 .join(" ");
-            write!(f, "\n  Environment: {}", env_str)?;
+            write!(f, "  Environment: {}", env_str)?;
         }
 
         Ok(())
     }
+}
+
+fn yes_no(b: bool) -> &'static str {
+    if b { "yes" } else { "no" }
 }
