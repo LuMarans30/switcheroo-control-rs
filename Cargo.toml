@@ -11,4 +11,4 @@ repository = "https://gitlab.freedesktop.org/hadess/switcheroo-control"
 [workspace.dependencies]
 color-eyre = "0.6.5"
 zbus = "4.0"
-tokio = { version = "1.52.3", features = ["full"] }
+tokio = { version = "1.52.3", features = ["full", "signal"] }

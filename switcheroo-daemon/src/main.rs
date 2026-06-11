@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use color_eyre::eyre::Context;
 use zbus::{connection::Builder, interface};
 
 use std::sync::Arc;
@@ -38,15 +37,50 @@ impl SwitcherooServer {
     }
 }
 
+async fn sync_gpu_state(
+    cache_ref: &Arc<RwLock<Vec<GpuDevice>>>,
+    connection: &zbus::Connection,
+    emit_signals: bool,
+) {
+    let new_cards = match tokio::task::spawn_blocking(scan_drm_cards).await {
+        Ok(cards) => cards,
+        Err(e) => {
+            eprintln!("scan_drm_cards panicked: {}", e);
+            return;
+        }
+    };
+
+    let mut cache = cache_ref.write().await;
+
+    if *cache == new_cards {
+        return;
+    }
+
+    *cache = new_cards;
+
+    if emit_signals {
+        let object_server = connection.object_server();
+        if let Ok(iface_ref) = object_server
+            .interface::<_, SwitcherooServer>("/net/hadess/SwitcherooControl")
+            .await
+        {
+            let ctxt = iface_ref.signal_context();
+            let server = iface_ref.get().await;
+
+            let _ = server.g_p_us_changed(ctxt).await;
+            let _ = server.num_g_p_us_changed(ctxt).await;
+            let _ = server.has_dual_gpu_changed(ctxt).await;
+
+            println!("Hardware event processed. GPUs updated.");
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
 
-    let initial_cards = tokio::task::spawn_blocking(scan_drm_cards)
-        .await
-        .context("panic in scan_drm_cards")?;
-
-    let gpus_cache = Arc::new(RwLock::new(initial_cards));
+    let gpus_cache = Arc::new(RwLock::new(Vec::new()));
 
     let server = SwitcherooServer {
         gpus_cache: gpus_cache.clone(),
@@ -58,7 +92,8 @@ async fn main() -> color_eyre::Result<()> {
         .build()
         .await?;
 
-    println!("Switcheroo Daemon running. Initial scan complete.");
+    sync_gpu_state(&gpus_cache, &connection, false).await;
+    println!("Switcheroo Daemon running...");
 
     let cache_clone = gpus_cache.clone();
     let conn_clone = connection.clone();
@@ -79,33 +114,7 @@ async fn main() -> color_eyre::Result<()> {
 
     tokio::spawn(async move {
         while let Some(()) = rx.recv().await {
-            let new_cards = match tokio::task::spawn_blocking(scan_drm_cards).await {
-                Ok(cards) => cards,
-                Err(e) => {
-                    eprintln!("scan_drm_cards panicked: {}", e);
-                    continue;
-                }
-            };
-
-            {
-                let mut cache = cache_clone.write().await;
-                *cache = new_cards;
-            }
-
-            let object_server = conn_clone.object_server();
-            if let Ok(iface_ref) = object_server
-                .interface::<_, SwitcherooServer>("/net/hadess/SwitcherooControl")
-                .await
-            {
-                let ctxt = iface_ref.signal_context();
-                let server = iface_ref.get().await;
-
-                let _ = server.g_p_us_changed(ctxt).await;
-                let _ = server.num_g_p_us_changed(ctxt).await;
-                let _ = server.has_dual_gpu_changed(ctxt).await;
-            }
-
-            println!("Hardware event processed. GPUs updated.");
+            sync_gpu_state(&cache_clone, &conn_clone, true).await;
         }
     });
 

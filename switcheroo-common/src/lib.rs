@@ -5,13 +5,13 @@ use std::collections::HashMap;
 use std::fmt;
 use zbus::zvariant::{OwnedValue, Type, Value};
 
-#[derive(Debug, Clone, Serialize, Deserialize, Type, Value, OwnedValue)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Value, OwnedValue, PartialEq)]
 pub struct EnvVar {
     pub key: String,
     pub value: String,
 }
 
-#[derive(Debug, Clone, OwnedValue)]
+#[derive(Debug, Clone, OwnedValue, PartialEq)]
 pub struct GpuDevice {
     pub name: String,
     pub default: bool,
