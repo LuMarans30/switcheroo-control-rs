@@ -16,7 +16,7 @@ nix::ioctl_readwrite!(ioctl_xe_device_query, b'd', 0x40, DrmXeDeviceQuery);
 
 const DRM_XE_DEVICE_QUERY_CONFIG: u32 = 2;
 const DRM_XE_QUERY_CONFIG_FLAG_HAS_VRAM: u64 = 1 << 0;
-const CONFIG_FLAGS_OFFSET: usize = 8;
+const CONFIG_FLAGS_OFFSET: usize = 16;
 
 pub fn probe_fd(fd: RawFd) -> Result<bool, nix::Error> {
     let mut query = DrmXeDeviceQuery {
