@@ -126,8 +126,8 @@ pub fn scan_drm_cards() -> Vec<GpuDevice> {
         });
     }
 
-    // Single GPU fallback
-    if cards.len() == 1 {
+    // Fallback
+    if cards.len() == 1 || !cards.iter().any(|c| c.default) {
         cards[0].default = true;
     }
 
