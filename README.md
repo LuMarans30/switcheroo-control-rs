@@ -1,4 +1,4 @@
-# Switcheroo Rust Port
+# Switcheroo Rust Port (WIP)
 
 A WIP Rust port of the original [switcheroo-control daemon and CLI tool](https://gitlab.freedesktop.org/hadess/switcheroo-control) by [Bastien Nocera](https://gitlab.freedesktop.org/hadess).
 
