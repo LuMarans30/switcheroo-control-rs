@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+use color_eyre::eyre::bail;
 use zbus::{connection::Builder, interface};
 
 use std::sync::Arc;
@@ -89,11 +90,16 @@ async fn main() -> color_eyre::Result<()> {
         gpus_cache: gpus_cache.clone(),
     };
 
-    let connection = Builder::system()?
+    let connection = match Builder::system()?
         .name("net.hadess.SwitcherooControl")?
         .serve_at("/net/hadess/SwitcherooControl", server)?
         .build()
-        .await?;
+        .await
+    {
+        Ok(conn) => conn,
+        Err(zbus::Error::NameTaken) => bail!("Switcheroo daemon is already running"),
+        Err(e) => return Err(e.into()),
+    };
 
     sync_gpu_state(&gpus_cache, &connection, false).await;
     println!("Switcheroo Daemon running...");
