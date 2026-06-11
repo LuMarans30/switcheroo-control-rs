@@ -5,8 +5,9 @@ use zbus::{connection::Builder, interface};
 
 use std::sync::Arc;
 use tokio::{
+    io::unix::AsyncFd,
     signal::unix::{SignalKind, signal},
-    sync::RwLock,
+    sync::{RwLock, mpsc},
 };
 
 use crate::detection::scan_drm_cards;
@@ -25,14 +26,12 @@ struct SwitcherooServer {
 impl SwitcherooServer {
     #[zbus(property)]
     async fn has_dual_gpu(&self) -> bool {
-        let cache = self.gpus_cache.read().await;
-        cache.len() >= 2
+        self.gpus_cache.read().await.len() >= 2
     }
 
     #[zbus(property, name = "NumGPUs")]
     async fn num_gpus(&self) -> u32 {
-        let cache = self.gpus_cache.read().await;
-        cache.len() as u32
+        self.gpus_cache.read().await.len() as u32
     }
 
     #[zbus(property, name = "GPUs")]
@@ -41,51 +40,11 @@ impl SwitcherooServer {
     }
 }
 
-async fn sync_gpu_state(
-    cache_ref: &Arc<RwLock<Vec<GpuDevice>>>,
-    connection: &zbus::Connection,
-    emit_signals: bool,
-) {
-    let new_cards = match tokio::task::spawn_blocking(scan_drm_cards).await {
-        Ok(cards) => cards,
-        Err(e) => {
-            eprintln!("scan_drm_cards panicked: {}", e);
-            return;
-        }
-    };
-
-    let mut cache = cache_ref.write().await;
-
-    if *cache == new_cards {
-        return;
-    }
-
-    *cache = new_cards;
-
-    if emit_signals {
-        let object_server = connection.object_server();
-        if let Ok(iface_ref) = object_server
-            .interface::<_, SwitcherooServer>("/net/hadess/SwitcherooControl")
-            .await
-        {
-            let ctxt = iface_ref.signal_context();
-            let server = iface_ref.get().await;
-
-            let _ = server.g_p_us_changed(ctxt).await;
-            let _ = server.num_g_p_us_changed(ctxt).await;
-            let _ = server.has_dual_gpu_changed(ctxt).await;
-
-            println!("Hardware event processed. GPUs updated.");
-        }
-    }
-}
-
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
 
     let gpus_cache = Arc::new(RwLock::new(Vec::new()));
-
     let server = SwitcherooServer {
         gpus_cache: gpus_cache.clone(),
     };
@@ -101,49 +60,105 @@ async fn main() -> color_eyre::Result<()> {
         Err(e) => return Err(e.into()),
     };
 
-    sync_gpu_state(&gpus_cache, &connection, false).await;
+    // Initial hardware scan
+    update_gpu_cache(&gpus_cache).await;
     println!("Switcheroo Daemon running...");
 
-    let (tx, mut rx) = tokio::sync::mpsc::channel::<()>(16);
+    // Monitor cards
+    let (tx, rx) = mpsc::channel::<()>(16);
+    let udev_handle = tokio::spawn(run_udev_monitor(tx));
+    let event_handle = tokio::spawn(handle_hardware_events(rx, gpus_cache, connection));
 
-    let cache_clone = gpus_cache.clone();
-    let conn_clone = connection.clone();
-
-    let monitor_handle = tokio::spawn(async move {
-        while let Some(()) = rx.recv().await {
-            sync_gpu_state(&cache_clone, &conn_clone, true).await;
-        }
-        println!("GPU sync task shut down.");
-    });
-
-    let tx_udev = tx.clone();
-    let udev_handle = tokio::task::spawn_blocking(move || {
-        let builder = udev::MonitorBuilder::new().expect("Failed to create udev builder");
-        let builder = builder.match_subsystem("drm").expect("Failed to match drm");
-        let monitor = builder.listen().expect("Failed to listen to udev");
-
-        for _event in monitor.iter() {
-            if tx_udev.blocking_send(()).is_err() {
-                break;
-            }
-        }
-    });
-
+    // Keep daemon alive until shutdown signal
     wait_for_shutdown().await?;
     println!("Received termination signal. Shutting down...");
 
-    drop(tx);
-    if let Err(e) = udev_handle.await {
-        eprintln!("udev thread panicked: {e}");
-    }
-    if let Err(e) = monitor_handle.await {
-        eprintln!("monitor task panicked: {e}");
-    }
+    udev_handle.abort();
+    event_handle.abort();
+
+    let _ = udev_handle.await;
+    let _ = event_handle.await;
 
     println!("Switcheroo Daemon stopped.");
     Ok(())
 }
 
+/// Scans DRM cards and updates the shared cache if changes occurred.
+/// Returns `true` if the cache was modified.
+async fn update_gpu_cache(cache_lock: &RwLock<Vec<GpuDevice>>) -> bool {
+    let new_cards = match tokio::task::spawn_blocking(scan_drm_cards).await {
+        Ok(cards) => cards,
+        Err(e) => {
+            eprintln!("scan_drm_cards panicked: {e}");
+            return false;
+        }
+    };
+
+    let mut cache = cache_lock.write().await;
+    let has_changed = *cache != new_cards;
+
+    if has_changed {
+        *cache = new_cards;
+    }
+
+    has_changed
+}
+
+/// Notifies D-Bus clients that GPU properties have changed
+async fn emit_gpu_signals(connection: &zbus::Connection) -> zbus::Result<()> {
+    let object_server = connection.object_server();
+    let iface_ref = object_server
+        .interface::<_, SwitcherooServer>("/net/hadess/SwitcherooControl")
+        .await?;
+
+    let ctxt = iface_ref.signal_context();
+    let server = iface_ref.get().await;
+
+    let _ = server.g_p_us_changed(ctxt).await;
+    let _ = server.num_g_p_us_changed(ctxt).await;
+    let _ = server.has_dual_gpu_changed(ctxt).await;
+    Ok(())
+}
+
+/// Event loop that processes signals from the udev monitor thread
+async fn handle_hardware_events(
+    mut rx: mpsc::Receiver<()>,
+    cache: Arc<RwLock<Vec<GpuDevice>>>,
+    connection: zbus::Connection,
+) {
+    while rx.recv().await.is_some() {
+        if update_gpu_cache(&cache).await {
+            if let Err(e) = emit_gpu_signals(&connection).await {
+                eprintln!("Failed to emit D-Bus signals: {e}");
+            } else {
+                println!("Hardware event processed. GPUs updated.");
+            }
+        }
+    }
+    println!("GPU sync task shut down.");
+}
+
+/// Non-blocking worker thread dedicated to watching Linux udev events
+async fn run_udev_monitor(tx: mpsc::Sender<()>) -> color_eyre::Result<()> {
+    let monitor = udev::MonitorBuilder::new()?
+        .match_subsystem("drm")?
+        .listen()?;
+
+    let mut async_fd = AsyncFd::new(monitor)?;
+
+    loop {
+        let mut guard = async_fd.readable_mut().await?;
+        guard.clear_ready();
+
+        for _event in guard.get_inner_mut().iter() {
+            if tx.send(()).await.is_err() {
+                return Ok(());
+            }
+        }
+    }
+}
+
+/// Blocks until a system termination signal is received
 async fn wait_for_shutdown() -> color_eyre::Result<()> {
     let mut term = signal(SignalKind::terminate())?;
     tokio::select! {

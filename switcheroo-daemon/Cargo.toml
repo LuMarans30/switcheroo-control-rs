@@ -9,6 +9,6 @@ switcheroo-common = { path = "../switcheroo-common" }
 zbus = { workspace = true }
 color-eyre = { workspace = true }
 tokio = { workspace = true }
-udev = { version = "0.9.3", features = ["send"] }
+udev = { version = "0.9.3", features = ["sync"] }
 regex = "1.12.4"
 nix = { version = "0.31.3", features = ["ioctl"] }
