@@ -13,8 +13,11 @@ use which::which;
 
 #[derive(Parser)]
 struct Cli {
+    #[arg(short = 'g', long = "gpu")]
+    gpu: Option<u32>,
+
     #[command(subcommand)]
-    command: Commands,
+    command: Option<Commands>,
 }
 
 #[derive(Subcommand)]
@@ -24,13 +27,13 @@ enum Commands {
     /// Launch a command on a specific GPU
     #[command(trailing_var_arg = true, allow_hyphen_values = true)]
     Launch {
-        /// The GPU to launch on
         #[arg(short = 'g', long = "gpu")]
         gpu: Option<u32>,
-        /// Command and its args to launch
         #[arg(required = true)]
         args: Vec<String>,
     },
+    #[command(external_subcommand)]
+    External(Vec<String>),
 }
 
 #[tokio::main]
@@ -45,9 +48,10 @@ async fn main() -> Result<()> {
 
     let gpus: Vec<GpuDevice> = proxy.gpus().await?;
 
-    match &cli.command {
+    match cli.command.unwrap_or(Commands::List) {
         Commands::List => cmd_list(&gpus),
-        Commands::Launch { gpu, args } => cmd_launch(&gpus, *gpu, args),
+        Commands::Launch { gpu, args } => cmd_launch(&gpus, gpu.or(cli.gpu), &args),
+        Commands::External(args) => cmd_launch(&gpus, cli.gpu, &args),
     }
 }
 
@@ -86,8 +90,8 @@ fn cmd_launch(gpus: &[GpuDevice], gpu: Option<u32>, args: &[String]) -> Result<(
     Err(eyre!("Failed to execute process: {}", err))
 }
 
-fn validate_args(command: &Commands) -> Result<()> {
-    if let Commands::Launch { args, .. } = command {
+fn validate_args(command: &Option<Commands>) -> Result<()> {
+    if let Some(Commands::Launch { args, .. } | Commands::External(args)) = &command {
         which(&args[0]).map_err(|_| eyre!("Command not found in PATH: '{}'", args[0]))?;
     }
     Ok(())
