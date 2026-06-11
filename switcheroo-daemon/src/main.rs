@@ -3,7 +3,10 @@
 use zbus::{connection::Builder, interface};
 
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use tokio::{
+    signal::unix::{SignalKind, signal},
+    sync::RwLock,
+};
 
 use crate::detection::scan_drm_cards;
 
@@ -95,29 +98,51 @@ async fn main() -> color_eyre::Result<()> {
     sync_gpu_state(&gpus_cache, &connection, false).await;
     println!("Switcheroo Daemon running...");
 
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<()>(16);
+
     let cache_clone = gpus_cache.clone();
     let conn_clone = connection.clone();
 
-    let (tx, mut rx) = tokio::sync::mpsc::channel::<()>(2);
+    let monitor_handle = tokio::spawn(async move {
+        while let Some(()) = rx.recv().await {
+            sync_gpu_state(&cache_clone, &conn_clone, true).await;
+        }
+        println!("GPU sync task shut down.");
+    });
 
-    tokio::task::spawn_blocking(move || {
+    let tx_udev = tx.clone();
+    let udev_handle = tokio::task::spawn_blocking(move || {
         let builder = udev::MonitorBuilder::new().expect("Failed to create udev builder");
         let builder = builder.match_subsystem("drm").expect("Failed to match drm");
         let monitor = builder.listen().expect("Failed to listen to udev");
 
         for _event in monitor.iter() {
-            if tx.blocking_send(()).is_err() {
+            if tx_udev.blocking_send(()).is_err() {
                 break;
             }
         }
     });
 
-    tokio::spawn(async move {
-        while let Some(()) = rx.recv().await {
-            sync_gpu_state(&cache_clone, &conn_clone, true).await;
-        }
-    });
+    wait_for_shutdown().await?;
+    println!("Received termination signal. Shutting down...");
 
-    std::future::pending::<()>().await;
+    drop(tx);
+    if let Err(e) = udev_handle.await {
+        eprintln!("udev thread panicked: {e}");
+    }
+    if let Err(e) = monitor_handle.await {
+        eprintln!("monitor task panicked: {e}");
+    }
+
+    println!("Switcheroo Daemon stopped.");
+    Ok(())
+}
+
+async fn wait_for_shutdown() -> color_eyre::Result<()> {
+    let mut term = signal(SignalKind::terminate())?;
+    tokio::select! {
+        _ = tokio::signal::ctrl_c() => {},
+        _ = term.recv() => {},
+    }
     Ok(())
 }
