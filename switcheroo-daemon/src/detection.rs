@@ -112,11 +112,9 @@ pub fn scan_drm_cards() -> Vec<GpuDevice> {
             .map(|s| s.trim() == "1")
             .unwrap_or(false);
 
-        let discrete = device
-            .property_value("TAGS")
-            .and_then(|s| s.to_str())
-            .map(|tags| tags.contains(":switcheroo-discrete-gpu:"))
-            .unwrap_or(false);
+        // Extract the driver name to pass to our custom direct ioctl probes
+        let driver = parent.driver().and_then(|s| s.to_str()).unwrap_or("");
+        let discrete = get_card_is_discrete(&device) || crate::helpers::probe(devnode, driver);
 
         cards.push(GpuDevice {
             name: get_card_name(&parent),
@@ -134,4 +132,10 @@ pub fn scan_drm_cards() -> Vec<GpuDevice> {
     cards.sort_by_key(|b| std::cmp::Reverse(b.default));
 
     cards
+}
+
+pub fn get_card_is_discrete(dev: &udev::Device) -> bool {
+    crate::detection::get_property(dev, "TAGS")
+        .map(|tags| tags.split(':').any(|t| t == "switcheroo-discrete-gpu"))
+        .unwrap_or(false)
 }

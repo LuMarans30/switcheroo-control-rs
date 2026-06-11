@@ -9,6 +9,7 @@ use tokio::sync::RwLock;
 use crate::detection::scan_drm_cards;
 
 mod detection;
+mod helpers;
 mod info_cleanup;
 
 use switcheroo_common::GpuDevice;
