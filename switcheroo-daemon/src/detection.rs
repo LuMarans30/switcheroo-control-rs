@@ -102,6 +102,10 @@ pub fn scan_drm_cards() -> Vec<GpuDevice> {
 
         let env = get_card_env(&device, &parent);
 
+        if env.is_empty() {
+            continue;
+        }
+
         let default = parent
             .attribute_value("boot_vga")
             .and_then(|s| s.to_str())
