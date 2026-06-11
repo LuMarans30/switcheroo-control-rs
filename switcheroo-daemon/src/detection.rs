@@ -33,19 +33,25 @@ pub fn get_card_env(dev: &udev::Device, parent: &udev::Device) -> Vec<EnvVar> {
     let driver = parent.driver().and_then(|s| s.to_str()).unwrap_or("");
 
     if driver == "nvidia" {
-        env.push(EnvVar::new(
-            "__GLX_VENDOR_LIBRARY_NAME".into(),
-            "nvidia".into(),
-        ));
-        env.push(EnvVar::new("__NV_PRIME_RENDER_OFFLOAD".into(), "1".into()));
-        env.push(EnvVar::new(
-            "__VK_LAYER_NV_optimus".into(),
-            "NVIDIA_only".into(),
-        ));
+        env.push(EnvVar {
+            key: "__GLX_VENDOR_LIBRARY_NAME".into(),
+            value: "nvidia".into(),
+        });
+        env.push(EnvVar {
+            key: "__NV_PRIME_RENDER_OFFLOAD".into(),
+            value: "1".into(),
+        });
+        env.push(EnvVar {
+            key: "__VK_LAYER_NV_optimus".into(),
+            value: "NVIDIA_only".into(),
+        });
     } else {
         // For Mesa drivers (AMD/Intel/Nouveau), use DRI_PRIME with the PCI path
         if let Some(id_path) = get_property(dev, "ID_PATH_TAG") {
-            env.push(EnvVar::new("DRI_PRIME".into(), id_path.into()));
+            env.push(EnvVar {
+                key: "DRI_PRIME".into(),
+                value: id_path.into(),
+            });
         }
     }
 
@@ -57,12 +63,14 @@ pub fn get_card_env(dev: &udev::Device, parent: &udev::Device) -> Vec<EnvVar> {
     };
 
     if let Some(vk) = vk_driver {
-        env.push(EnvVar::new("VK_LOADER_DRIVERS_SELECT".into(), vk.into()));
+        env.push(EnvVar {
+            key: "VK_LOADER_DRIVERS_SELECT".into(),
+            value: vk.into(),
+        });
     }
 
     env
 }
-
 /// Scans the system for all DRM cards and builds our cache
 pub fn scan_drm_cards() -> Vec<GpuDevice> {
     let mut cards = Vec::new();

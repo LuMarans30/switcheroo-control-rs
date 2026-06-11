@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use std::fmt::{self};
-
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use zbus::zvariant::{DeserializeDict, OwnedValue, SerializeDict, Type, Value};
+use std::fmt;
+use zbus::zvariant::{OwnedValue, Type, Value};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Value, OwnedValue)]
 pub struct EnvVar {
@@ -12,13 +11,18 @@ pub struct EnvVar {
     pub value: String,
 }
 
-#[derive(Debug, Clone, SerializeDict, DeserializeDict, Type, OwnedValue)]
-#[zvariant(signature = "dict")]
+#[derive(Debug, Clone, OwnedValue)]
 pub struct GpuDevice {
     pub name: String,
     pub default: bool,
     pub discrete: bool,
     pub environment: Vec<EnvVar>,
+}
+
+impl Type for GpuDevice {
+    fn signature() -> zbus::zvariant::Signature<'static> {
+        zbus::zvariant::Signature::from_static_str("a{sv}").unwrap()
+    }
 }
 
 impl From<GpuDevice> for Value<'_> {
@@ -27,7 +31,15 @@ impl From<GpuDevice> for Value<'_> {
         fields.insert("Name", Value::from(gpu.name));
         fields.insert("Default", Value::from(gpu.default));
         fields.insert("Discrete", Value::from(gpu.discrete));
-        fields.insert("Environment", Value::from(gpu.environment));
+
+        // Flatten the Vec<EnvVar> into a sequential Vec<String> to match the C daemon's "as" type
+        let mut env_flat = Vec::with_capacity(gpu.environment.len() * 2);
+        for env in gpu.environment {
+            env_flat.push(env.key);
+            env_flat.push(env.value);
+        }
+        fields.insert("Environment", Value::from(env_flat));
+
         Value::from(fields)
     }
 }
@@ -36,13 +48,50 @@ impl TryFrom<Value<'_>> for GpuDevice {
     type Error = zbus::zvariant::Error;
 
     fn try_from(value: Value<'_>) -> zbus::zvariant::Result<Self> {
-        Self::try_from(value.try_to_owned()?)
+        let dict = zbus::zvariant::Dict::try_from(value)?;
+
+        let name: String = dict
+            .get(&"Name".to_string())?
+            .ok_or_else(|| zbus::zvariant::Error::Message("Missing field 'Name'".to_string()))?;
+
+        let default: bool = dict
+            .get(&"Default".to_string())?
+            .ok_or_else(|| zbus::zvariant::Error::Message("Missing field 'Default'".to_string()))?;
+
+        let discrete: bool = dict.get(&"Discrete".to_string())?.ok_or_else(|| {
+            zbus::zvariant::Error::Message("Missing field 'Discrete'".to_string())
+        })?;
+
+        let mut environment = Vec::new();
+
+        if let Some(env_value) = dict.get::<&str, &Value>(&"Environment")?
+            && let Value::Array(arr) = env_value
+        {
+            let vals: Vec<String> = arr
+                .iter()
+                .filter_map(|v| String::try_from(v).ok())
+                .collect();
+
+            for chunk in vals.chunks_exact(2) {
+                environment.push(EnvVar {
+                    key: chunk[0].clone(),
+                    value: chunk[1].clone(),
+                });
+            }
+        }
+
+        Ok(GpuDevice {
+            name,
+            default,
+            discrete,
+            environment,
+        })
     }
 }
 
 impl EnvVar {
-    pub fn new(key: String, value: String) -> Self {
-        Self { key, value }
+    pub fn apply(&self, cmd: &mut std::process::Command) {
+        cmd.env(&self.key, &self.value);
     }
 }
 
@@ -54,8 +103,8 @@ impl fmt::Display for EnvVar {
 
 impl GpuDevice {
     pub fn apply_env(&self, cmd: &mut std::process::Command) {
-        for EnvVar { key, value } in &self.environment {
-            cmd.env(key, value);
+        for env in &self.environment {
+            env.apply(cmd);
         }
     }
 }
