@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use color_eyre::eyre::bail;
 use zbus::{connection::Builder, interface};
 
-use std::sync::Arc;
+use std::{process::exit, sync::Arc};
 use tokio::{
     io::unix::AsyncFd,
     signal::unix::{SignalKind, signal},
@@ -56,7 +55,10 @@ async fn main() -> color_eyre::Result<()> {
         .await
     {
         Ok(conn) => conn,
-        Err(zbus::Error::NameTaken) => bail!("Switcheroo daemon is already running"),
+        Err(zbus::Error::NameTaken) => {
+            eprintln!("Switcheroo daemon is already running");
+            exit(0)
+        }
         Err(e) => return Err(e.into()),
     };
 
