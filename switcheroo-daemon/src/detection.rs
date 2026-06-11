@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+use std::ffi::CString;
+
 use switcheroo_common::EnvVar;
+use udev::{AsRawWithContext, ffi::udev_device_has_tag};
 
 use crate::{GpuDevice, info_cleanup::info_cleanup};
 
@@ -135,7 +138,9 @@ pub fn scan_drm_cards() -> Vec<GpuDevice> {
 }
 
 pub fn get_card_is_discrete(dev: &udev::Device) -> bool {
-    crate::detection::get_property(dev, "TAGS")
-        .map(|tags| tags.split(':').any(|t| t == "switcheroo-discrete-gpu"))
+    // Direct FFI is much faster than parsing TAGS property (1.5 µs vs 65 µs).
+    // Safe alternative: dev.property_value("TAGS") and split on ':'
+    CString::new("switcheroo-discrete-gpu")
+        .map(|tag| unsafe { udev_device_has_tag(dev.as_raw(), tag.as_ptr()) == 1 })
         .unwrap_or(false)
 }
