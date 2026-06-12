@@ -89,8 +89,8 @@ async fn main() -> color_eyre::Result<()> {
         .await?;
 
     if matches!(reply, RequestNameReply::InQueue | RequestNameReply::Exists) {
-        eprintln!("Switcheroo daemon is already running");
-        exit(1);
+        eprintln!("Switcheroo daemon is already running (name taken). Exiting gracefully.");
+        exit(0);
     }
 
     // Initial hardware scan

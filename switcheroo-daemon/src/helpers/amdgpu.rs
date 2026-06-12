@@ -33,7 +33,7 @@ struct DrmAmdgpuInfoDevice {
     ids_flags: u64,
 }
 
-nix::ioctl_readwrite!(ioctl_amdgpu_info, b'd', 0x45, DrmAmdgpuInfo);
+nix::ioctl_write_ptr!(ioctl_amdgpu_info, b'd', 0x45, DrmAmdgpuInfo);
 
 const AMDGPU_INFO_DEV_INFO: u32 = 0x16;
 const AMDGPU_IDS_FLAGS_FUSION: u64 = 1 << 0;
@@ -41,14 +41,14 @@ const AMDGPU_IDS_FLAGS_FUSION: u64 = 1 << 0;
 pub fn probe_fd(fd: RawFd) -> Result<bool, nix::Error> {
     let mut device_info = DrmAmdgpuInfoDevice::default();
 
-    let mut request = DrmAmdgpuInfo {
+    let request = DrmAmdgpuInfo {
         return_pointer: &mut device_info as *mut _ as u64,
         return_size: std::mem::size_of::<DrmAmdgpuInfoDevice>() as u32,
         query: AMDGPU_INFO_DEV_INFO,
         _reserved: [0; 16],
     };
 
-    unsafe { ioctl_amdgpu_info(fd, &mut request)? };
+    unsafe { ioctl_amdgpu_info(fd, &request)? };
 
     Ok(device_info.ids_flags & AMDGPU_IDS_FLAGS_FUSION == 0)
 }
