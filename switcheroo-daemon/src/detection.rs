@@ -141,6 +141,9 @@ pub fn get_card_is_discrete(dev: &udev::Device) -> bool {
     // Direct FFI is much faster than parsing TAGS property (1.5 µs vs 65 µs).
     // Safe alternative: dev.property_value("TAGS") and split on ':'
     CString::new("switcheroo-discrete-gpu")
-        .map(|tag| unsafe { udev_device_has_tag(dev.as_raw(), tag.as_ptr()) == 1 })
+        .map(|tag| 
+            // Both `dev` and `tag` are guaranteed to outlive the FFI call
+            unsafe { udev_device_has_tag(dev.as_raw(), tag.as_ptr()) == 1 }
+        )
         .unwrap_or(false)
 }
