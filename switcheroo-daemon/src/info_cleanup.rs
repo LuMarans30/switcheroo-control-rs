@@ -26,7 +26,7 @@ const REPLACEMENTS: &[ReplaceString] = &[
         replacement: "™",
     },
     ReplaceString {
-        re: r"(ATI|EPYC|AMD FX|Radeon|Ryzen|Threadripper|GeForce RTX) ",
+        re: r"(ATI|EPYC|AMD FX|Radeon|Ryzen|Threadripper|GeForce (?:GTX|RTX)) ",
         replacement: "${1}™ ",
     },
     ReplaceString {
