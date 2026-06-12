@@ -109,11 +109,19 @@ impl GpuDevice {
     }
 }
 
+struct YesNo(bool);
+
+impl fmt::Display for YesNo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", if self.0 { "yes" } else { "no" })
+    }
+}
+
 impl fmt::Display for GpuDevice {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "  Name:        {}", self.name)?;
-        writeln!(f, "  Default:     {}", yes_no(self.default))?;
-        writeln!(f, "  Discrete:    {}", yes_no(self.discrete))?;
+        writeln!(f, "  Default:     {}", YesNo(self.default))?;
+        writeln!(f, "  Discrete:    {}", YesNo(self.discrete))?;
 
         if !self.environment.is_empty() {
             let env_str = self
@@ -127,8 +135,4 @@ impl fmt::Display for GpuDevice {
 
         Ok(())
     }
-}
-
-fn yes_no(b: bool) -> &'static str {
-    if b { "yes" } else { "no" }
 }
