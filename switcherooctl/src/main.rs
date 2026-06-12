@@ -49,14 +49,14 @@ async fn main() -> Result<()> {
     let gpus: Vec<GpuDevice> = proxy.gpus().await?;
 
     match cli.command.unwrap_or(Commands::List) {
-        Commands::List => cmd_list(&gpus),
-        Commands::Launch { gpu, args } => cmd_launch(&gpus, gpu.or(cli.gpu), &args),
-        Commands::External(args) => cmd_launch(&gpus, cli.gpu, &args),
+        Commands::List => list_gpus(&gpus),
+        Commands::Launch { gpu, args } => launch_on_gpu(&gpus, gpu.or(cli.gpu), &args),
+        Commands::External(args) => launch_on_gpu(&gpus, cli.gpu, &args),
     }
 }
 
 /// Lists all the available GPUs
-fn cmd_list(gpus: &[GpuDevice]) -> Result<()> {
+fn list_gpus(gpus: &[GpuDevice]) -> Result<()> {
     for (idx, gpu) in gpus.iter().enumerate() {
         println!("Device: {}\n{}\n", idx, gpu);
     }
@@ -64,7 +64,7 @@ fn cmd_list(gpus: &[GpuDevice]) -> Result<()> {
 }
 
 /// Launches a program using the specified GPU
-fn cmd_launch(gpus: &[GpuDevice], gpu: Option<u32>, args: &[String]) -> Result<()> {
+fn launch_on_gpu(gpus: &[GpuDevice], gpu: Option<u32>, args: &[String]) -> Result<()> {
     let gpu_idx = match gpu {
         Some(id) => id as usize,
         None => {
