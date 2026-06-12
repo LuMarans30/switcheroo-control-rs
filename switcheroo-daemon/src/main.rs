@@ -1,27 +1,37 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 use zbus::{
+    Connection,
     connection::Builder,
-    fdo::{Properties, RequestNameFlags},
+    fdo::{DBusProxy, Properties, RequestNameFlags, RequestNameReply},
     interface,
     object_server::Interface,
     zvariant::Value,
 };
 
-use std::{collections::HashMap, process::exit, sync::Arc};
+use clap::Parser;
+use std::{collections::HashMap, process::exit, sync::Arc, time::Duration};
 use tokio::{
     io::unix::AsyncFd,
     signal::unix::{SignalKind, signal},
-    sync::{RwLock, mpsc},
+    sync::{
+        RwLock,
+        mpsc::{self, Sender},
+    },
 };
 
 use crate::detection::scan_drm_cards;
+
+use futures_lite::stream::StreamExt;
 
 mod detection;
 mod helpers;
 mod info_cleanup;
 
 use switcheroo_common::GpuDevice;
+
+const DBUS_NAME: &str = "net.hadess.SwitcherooControl";
+const DBUS_PATH: &str = "/net/hadess/SwitcherooControl";
 
 struct SwitcherooServer {
     gpus_cache: Arc<RwLock<Vec<GpuDevice>>>,
@@ -45,35 +55,46 @@ impl SwitcherooServer {
     }
 }
 
+#[derive(Parser)]
+struct Cli {
+    /// Replace an already running instance of the daemon
+    #[arg(short, long)]
+    replace: bool,
+}
+
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
+
+    let Cli { replace } = Cli::parse();
 
     let gpus_cache = Arc::new(RwLock::new(Vec::new()));
     let server = SwitcherooServer {
         gpus_cache: gpus_cache.clone(),
     };
 
-    let connection = match Builder::system()?
-        .serve_at("/net/hadess/SwitcherooControl", server)?
+    let connection = Builder::system()?
+        .serve_at(DBUS_PATH, server)?
         .build()
-        .await
-    {
-        Ok(conn) => conn,
-        Err(zbus::Error::NameTaken) => {
-            eprintln!("Switcheroo daemon is already running");
-            exit(0)
-        }
-        Err(e) => return Err(e.into()),
-    };
-
-    // Set AllowReplacement flag so the daemon can be hot-swapped
-    connection
-        .request_name_with_flags(
-            "net.hadess.SwitcherooControl",
-            RequestNameFlags::AllowReplacement | RequestNameFlags::ReplaceExisting,
-        )
         .await?;
+
+    let mut name_flags = RequestNameFlags::DoNotQueue | RequestNameFlags::AllowReplacement;
+    if replace {
+        name_flags |= RequestNameFlags::ReplaceExisting;
+    }
+
+    // Enforce a single deamon instance
+    let reply = connection
+        .request_name_with_flags(DBUS_NAME, name_flags)
+        .await?;
+
+    match reply {
+        RequestNameReply::PrimaryOwner | RequestNameReply::AlreadyOwner => {}
+        RequestNameReply::InQueue | RequestNameReply::Exists => {
+            eprintln!("Switcheroo daemon is already running");
+            exit(0);
+        }
+    }
 
     // Initial hardware scan
     update_gpu_cache(&gpus_cache).await;
@@ -81,25 +102,67 @@ async fn main() -> color_eyre::Result<()> {
 
     // Monitor cards
     let (tx, rx) = mpsc::channel::<()>(16);
-    let udev_handle = tokio::spawn(run_udev_monitor(tx));
-    let event_handle = tokio::spawn(handle_hardware_events(rx, gpus_cache, connection));
+    let (shutdown_tx, mut shutdown_rx) = mpsc::channel::<()>(1);
 
-    // Keep daemon alive until shutdown signal
-    wait_for_shutdown().await?;
-    println!("Received termination signal. Shutting down...");
+    let udev_handle = tokio::spawn(run_udev_monitor(tx));
+    let event_handle = tokio::spawn(handle_hardware_events(rx, gpus_cache, connection.clone()));
+    let replacement_handle = tokio::spawn(handle_replacement(connection.clone(), shutdown_tx));
+
+    // Keep daemon alive until shutdown signal or replacement
+    let shut_reason = tokio::select! {
+        _ = wait_for_shutdown() => {
+            "Received termination signal"
+        }
+        _ = shutdown_rx.recv() => {
+            "Replaced by another instance"
+        }
+    };
+
+    println!("{shut_reason}. Shutting down...");
 
     udev_handle.abort();
     event_handle.abort();
+    replacement_handle.abort();
 
     let _ = udev_handle.await;
     let _ = event_handle.await;
+    let _ = replacement_handle.await;
 
     println!("Switcheroo Daemon stopped.");
     Ok(())
 }
 
+/// Handle replacement by another instance safely
+async fn handle_replacement(
+    connection: Connection,
+    shutdown: Sender<()>,
+) -> color_eyre::Result<()> {
+    let dbus_proxy = DBusProxy::new(&connection).await?;
+    let mut owner_changes = dbus_proxy.receive_name_owner_changed().await?;
+    let unique_name = connection
+        .unique_name()
+        .ok_or_else(|| color_eyre::eyre::eyre!("Connection has no unique name"))?
+        .to_owned();
+
+    while let Some(signal) = owner_changes.next().await {
+        let Ok(args) = signal.args() else { continue };
+
+        if args.name().as_str() != DBUS_NAME {
+            continue;
+        }
+
+        if let Some(new_owner) = args.new_owner().as_deref()
+            && new_owner != unique_name.as_str()
+        {
+            let _ = shutdown.send(()).await;
+            break;
+        }
+    }
+
+    Ok(())
+}
+
 /// Scans DRM cards and updates the shared cache if changes occurred
-/// Returns the new list of GPUs if the cache was modified
 async fn update_gpu_cache(cache_lock: &RwLock<Vec<GpuDevice>>) -> Option<Vec<GpuDevice>> {
     let new_cards = match tokio::task::spawn_blocking(scan_drm_cards).await {
         Ok(cards) => cards,
@@ -120,10 +183,10 @@ async fn update_gpu_cache(cache_lock: &RwLock<Vec<GpuDevice>>) -> Option<Vec<Gpu
 }
 
 /// Emits a `PropertiesChanged` signal to notify D-Bus clients of GPU updates
-async fn emit_gpu_signal(connection: &zbus::Connection, gpus: Vec<GpuDevice>) -> zbus::Result<()> {
+async fn emit_gpu_signal(connection: &Connection, gpus: Vec<GpuDevice>) -> zbus::Result<()> {
     let object_server = connection.object_server();
     let iface_ref = object_server
-        .interface::<_, SwitcherooServer>("/net/hadess/SwitcherooControl")
+        .interface::<_, SwitcherooServer>(DBUS_PATH)
         .await?;
 
     let emitter = iface_ref.signal_context();
@@ -144,14 +207,15 @@ async fn emit_gpu_signal(connection: &zbus::Connection, gpus: Vec<GpuDevice>) ->
     .await
 }
 
-/// Event loop that processes signals from the udev monitor thread
+/// Event loop that processes signals from the udev monitor thread with debouncing
 async fn handle_hardware_events(
     mut rx: mpsc::Receiver<()>,
     cache: Arc<RwLock<Vec<GpuDevice>>>,
-    connection: zbus::Connection,
+    connection: Connection,
 ) {
     while rx.recv().await.is_some() {
         // Debounce
+        tokio::time::sleep(Duration::from_millis(50)).await;
         while rx.try_recv().is_ok() {}
 
         if let Some(new_gpus) = update_gpu_cache(&cache).await {
@@ -175,12 +239,17 @@ async fn run_udev_monitor(tx: mpsc::Sender<()>) -> color_eyre::Result<()> {
 
     loop {
         let mut guard = async_fd.readable_mut().await?;
+
+        let mut event_count = 0;
+        for _event in guard.get_inner_mut().iter() {
+            event_count += 1;
+        }
         guard.clear_ready();
 
-        for _event in guard.get_inner_mut().iter() {
-            if tx.send(()).await.is_err() {
-                return Ok(());
-            }
+        drop(guard);
+
+        if event_count > 0 && tx.send(()).await.is_err() {
+            return Ok(());
         }
     }
 }
