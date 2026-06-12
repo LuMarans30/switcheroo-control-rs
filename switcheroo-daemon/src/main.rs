@@ -88,12 +88,9 @@ async fn main() -> color_eyre::Result<()> {
         .request_name_with_flags(DBUS_NAME, name_flags)
         .await?;
 
-    match reply {
-        RequestNameReply::PrimaryOwner | RequestNameReply::AlreadyOwner => {}
-        RequestNameReply::InQueue | RequestNameReply::Exists => {
-            eprintln!("Switcheroo daemon is already running");
-            exit(1);
-        }
+    if matches!(reply, RequestNameReply::InQueue | RequestNameReply::Exists) {
+        eprintln!("Switcheroo daemon is already running");
+        exit(1);
     }
 
     // Initial hardware scan
