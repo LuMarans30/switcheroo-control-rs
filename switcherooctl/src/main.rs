@@ -9,8 +9,7 @@ use client::SwitcherooProxy;
 use zbus::proxy::ProxyDefault;
 
 use std::os::unix::process::CommandExt;
-use std::process::Command;
-use which::which;
+use std::process::{Command, exit};
 
 #[derive(Parser)]
 struct Cli {
@@ -42,7 +41,6 @@ async fn main() -> Result<()> {
     color_eyre::install()?;
 
     let cli = Cli::parse();
-    validate_args(&cli.command)?;
 
     let connection = zbus::Connection::system().await?;
     let gpus = fetch_gpu_devices(&connection).await?;
@@ -105,12 +103,6 @@ fn launch_on_gpu(gpus: &[GpuDevice], gpu: Option<u32>, args: &[String]) -> Resul
     target_gpu.apply_env(&mut cmd);
 
     let err = cmd.exec();
-    Err(eyre!("Failed to execute process: {}", err))
-}
-
-fn validate_args(command: &Option<Commands>) -> Result<()> {
-    if let Some(Commands::Launch { args, .. } | Commands::External(args)) = &command {
-        which(&args[0]).map_err(|_| eyre!("Command not found in PATH: '{}'", args[0]))?;
-    }
-    Ok(())
+    eprintln!("switcherooctl: failed to execute '{}': {}", args[0], err);
+    exit(1)
 }
