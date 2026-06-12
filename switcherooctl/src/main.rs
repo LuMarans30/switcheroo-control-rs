@@ -6,6 +6,7 @@ use switcheroo_common::GpuDevice;
 
 mod client;
 use client::SwitcherooProxy;
+use zbus::proxy::ProxyDefault;
 
 use std::os::unix::process::CommandExt;
 use std::process::Command;
@@ -44,15 +45,32 @@ async fn main() -> Result<()> {
     validate_args(&cli.command)?;
 
     let connection = zbus::Connection::system().await?;
-    let proxy = SwitcherooProxy::new(&connection).await?;
-
-    let gpus: Vec<GpuDevice> = proxy.gpus().await?;
+    let gpus = fetch_gpu_devices(&connection).await?;
 
     match cli.command.unwrap_or(Commands::List) {
         Commands::List => list_gpus(&gpus),
         Commands::Launch { gpu, args } => launch_on_gpu(&gpus, gpu.or(cli.gpu), &args),
         Commands::External(args) => launch_on_gpu(&gpus, cli.gpu, &args),
     }
+}
+
+/// Connects to the switcheroo proxy and fetches devices, handling daemon errors gracefully
+async fn fetch_gpu_devices(connection: &zbus::Connection) -> Result<Vec<GpuDevice>> {
+    let proxy = SwitcherooProxy::new(connection).await?;
+
+    proxy
+        .gpus()
+        .await
+        .map_err(|e| match zbus::fdo::Error::from(e) {
+            zbus::fdo::Error::ServiceUnknown(_) => {
+                eyre!("The switcheroo daemon is not running or installed.")
+            }
+            zbus::fdo::Error::NoReply(_) | zbus::fdo::Error::Timeout(_) => {
+                let service_name = SwitcherooProxy::DESTINATION.unwrap_or("switcheroo");
+                eyre!("Service '{service_name}' is registered but failed to respond.")
+            }
+            err => err.into(),
+        })
 }
 
 /// Lists all the available GPUs
