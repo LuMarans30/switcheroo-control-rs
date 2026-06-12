@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use zbus::{connection::Builder, interface};
+use zbus::{connection::Builder, fdo::RequestNameFlags, interface};
 
 use std::{process::exit, sync::Arc};
 use tokio::{
@@ -49,7 +49,6 @@ async fn main() -> color_eyre::Result<()> {
     };
 
     let connection = match Builder::system()?
-        .name("net.hadess.SwitcherooControl")?
         .serve_at("/net/hadess/SwitcherooControl", server)?
         .build()
         .await
@@ -61,6 +60,14 @@ async fn main() -> color_eyre::Result<()> {
         }
         Err(e) => return Err(e.into()),
     };
+
+    // Set AllowReplacement flag so the daemon can be hot-swapped
+    connection
+        .request_name_with_flags(
+            "net.hadess.SwitcherooControl",
+            RequestNameFlags::AllowReplacement | RequestNameFlags::ReplaceExisting,
+        )
+        .await?;
 
     // Initial hardware scan
     update_gpu_cache(&gpus_cache).await;
