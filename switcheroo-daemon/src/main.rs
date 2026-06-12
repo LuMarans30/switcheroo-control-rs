@@ -1,8 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use zbus::{connection::Builder, fdo::RequestNameFlags, interface};
+use zbus::{
+    connection::Builder,
+    fdo::{Properties, RequestNameFlags},
+    interface,
+    object_server::Interface,
+    zvariant::Value,
+};
 
-use std::{process::exit, sync::Arc};
+use std::{collections::HashMap, process::exit, sync::Arc};
 use tokio::{
     io::unix::AsyncFd,
     signal::unix::{SignalKind, signal},
@@ -92,41 +98,50 @@ async fn main() -> color_eyre::Result<()> {
     Ok(())
 }
 
-/// Scans DRM cards and updates the shared cache if changes occurred.
-/// Returns `true` if the cache was modified.
-async fn update_gpu_cache(cache_lock: &RwLock<Vec<GpuDevice>>) -> bool {
+/// Scans DRM cards and updates the shared cache if changes occurred
+/// Returns the new list of GPUs if the cache was modified
+async fn update_gpu_cache(cache_lock: &RwLock<Vec<GpuDevice>>) -> Option<Vec<GpuDevice>> {
     let new_cards = match tokio::task::spawn_blocking(scan_drm_cards).await {
         Ok(cards) => cards,
         Err(e) => {
             eprintln!("scan_drm_cards panicked: {e}");
-            return false;
+            return None;
         }
     };
 
     let mut cache = cache_lock.write().await;
-    let has_changed = *cache != new_cards;
 
-    if has_changed {
-        *cache = new_cards;
+    if *cache != new_cards {
+        *cache = new_cards.clone();
+        Some(new_cards)
+    } else {
+        None
     }
-
-    has_changed
 }
 
-/// Notifies D-Bus clients that GPU properties have changed
-async fn emit_gpu_signals(connection: &zbus::Connection) -> zbus::Result<()> {
+/// Emits a `PropertiesChanged` signal to notify D-Bus clients of GPU updates
+async fn emit_gpu_signal(connection: &zbus::Connection, gpus: Vec<GpuDevice>) -> zbus::Result<()> {
     let object_server = connection.object_server();
     let iface_ref = object_server
         .interface::<_, SwitcherooServer>("/net/hadess/SwitcherooControl")
         .await?;
 
-    let ctxt = iface_ref.signal_context();
-    let server = iface_ref.get().await;
+    let emitter = iface_ref.signal_context();
 
-    let _ = server.g_p_us_changed(ctxt).await;
-    let _ = server.num_g_p_us_changed(ctxt).await;
-    let _ = server.has_dual_gpu_changed(ctxt).await;
-    Ok(())
+    let num_gpus = gpus.len() as u32;
+    let has_dual_gpu = num_gpus >= 2;
+
+    Properties::properties_changed(
+        emitter,
+        SwitcherooServer::name(),
+        &HashMap::from([
+            ("GPUs", &Value::from(gpus)),
+            ("NumGPUs", &Value::from(num_gpus)),
+            ("HasDualGpu", &Value::from(has_dual_gpu)),
+        ]),
+        &[],
+    )
+    .await
 }
 
 /// Event loop that processes signals from the udev monitor thread
@@ -136,9 +151,12 @@ async fn handle_hardware_events(
     connection: zbus::Connection,
 ) {
     while rx.recv().await.is_some() {
-        if update_gpu_cache(&cache).await {
-            if let Err(e) = emit_gpu_signals(&connection).await {
-                eprintln!("Failed to emit D-Bus signals: {e}");
+        // Debounce
+        while rx.try_recv().is_ok() {}
+
+        if let Some(new_gpus) = update_gpu_cache(&cache).await {
+            if let Err(e) = emit_gpu_signal(&connection, new_gpus).await {
+                eprintln!("Failed to emit D-Bus signal: {e}");
             } else {
                 println!("Hardware event processed. GPUs updated.");
             }
