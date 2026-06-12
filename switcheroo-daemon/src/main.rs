@@ -92,7 +92,7 @@ async fn main() -> color_eyre::Result<()> {
         RequestNameReply::PrimaryOwner | RequestNameReply::AlreadyOwner => {}
         RequestNameReply::InQueue | RequestNameReply::Exists => {
             eprintln!("Switcheroo daemon is already running");
-            exit(0);
+            exit(1);
         }
     }
 
