@@ -1,43 +1,65 @@
-# Switcheroo Rust Port (WIP)
+## Switcheroo Rust Port (WIP)
 
 A WIP Rust port of the original [switcheroo-control daemon and CLI tool](https://gitlab.freedesktop.org/hadess/switcheroo-control) by [Bastien Nocera](https://gitlab.freedesktop.org/hadess).
 
 From a [switcheroo-control man page](https://linuxcommandlibrary.com/man/switcheroo-control):
+
 > switcherooctl is the command-line interface for switcheroo-control, a daemon that manages hybrid graphics on Linux laptops with multiple GPUs. It provides a simple way to list available graphics adapters and launch applications on a specific GPU.
 > 
 > On hybrid graphics systems with both integrated (power-efficient) and discrete (high-performance) GPUs, applications default to the integrated GPU. Using switcherooctl, you can run specific applications on the discrete GPU for better graphics performance.
-> 
-> The underlying daemon interfaces with the kernel's vga_switcheroo subsystem and provides a D-Bus API that desktop environments like GNOME and KDE use for GUI-based GPU selection.
-> 
-> Setting the environment variable DRI_PRIME=1 achieves a similar effect for individual applications.
 
-## Crates
+This port uses the [`udev` crate](https://github.com/Smithay/udev-rs) for GPU monitoring, combined with the [`nix` crate](https://github.com/nix-rust/nix) for low-level ioctl driver queries (amdgpu, i915, nouveau, and xe drivers) to determine whether a card is discrete or integrated.
 
-| Crate               | Description                                                                         |
-| ------------------- | ----------------------------------------------------------------------------------- |
-| `switcheroo-daemon` | Reads GPU hardware and exposes available GPUs over the D-Bus system bus             |
-| `switcherooctl`     | A CLI tool to list GPUs and launch applications using a specific GPU                |
-| `switcheroo-common` | A shared library containing common types and D-Bus definitions for both components. |
+It reimplements the standard `net.hadess.SwitcherooControl` interface using the [`zbus` crate](https://github.com/z-galaxy/zbus). 
 
-## Usage
+`switcherooctl` provides a user-friendly CLI via the [`clap` crate](https://github.com/clap-rs/clap), including implicit subcommands which are also present in the original project. The daemon likewise uses `clap` for its own `--replace` flag.
+
+Also, just like the original project, it includes a regex-based cleanup module to prettify GPU information before it is published over D-Bus
+
+### Crates
+
+| Crate               | Description                                                                |
+| ------------------- | -------------------------------------------------------------------------- |
+| `switcheroo-daemon` | Background system service that monitors hardware and exposes it over D-Bus |
+| `switcherooctl`     | CLI utility used to list GPUs and launch binaries using a specific GPU     |
+| `switcheroo-common` | Shared types, serialization/deserialization logic and D-Bus definitions    |
+
+### Usage
+
+Ensure you have the `libudev` library installed where it can be found by `pkg-config`. 
+
+Example:
+
+```bash
+sudo apt-get install libudev-dev    # Debian-based Linux distributions
+sudo zypper install systemd-devel   # openSUSE/SLE
+```
 
 Compile a release build using [Cargo](https://rustup.rs/):
+
 ```bash
 cargo build --release
 ```
 
-Start the daemon as root:
+To test the daemon locally, stop the existing system service first to avoid D-Bus conflicts:
+
 ```bash
-sudo -b ./target/release/switcheroo-daemon &
+sudo systemctl stop switcheroo-control
+sudo ./target/release/switcheroo-daemon
 ```
 
+> [!TIP]
+> The daemon supports a `--replace` flag to replace an already running instance. 
+> Without it, the daemon will exit immediately if another instance holds the bus name.
+
 You can now use the CLI tool:
+
 ```bash
 ./target/release/switcherooctl help
 ```
 
 ```bash
-Usage: switcherooctl <COMMAND>
+Usage: switcherooctl [OPTIONS] [COMMAND]
 
 Commands:
   list    List the known GPUs
@@ -45,16 +67,25 @@ Commands:
   help    Print this message or the help of the given subcommand(s)
 
 Options:
-  -h, --help  Print help
+  -g, --gpu <GPU>
+  -h, --help       Print help
 ```
 
 ### Example
 
-Launch glmark2 on a discrete GPU:
+Launch the glmark2's refract benchmark on a discrete GPU:
+
 ```bash
 ./target/release/switcherooctl launch --gpu 1 glmark2 -b refract
 ```
 
-## License
+For simplicity, you can also omit subcommands:
+
+```bash
+./target/release/switcherooctl            # "switcherooctl list"
+./target/release/switcherooctl <program>  # "switcherooctl launch <program>" 
+```
+
+### License
 
 The project is licensed under `GPL-3.0-or-later` to match upstream.
