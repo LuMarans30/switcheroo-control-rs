@@ -103,7 +103,7 @@ impl fmt::Display for GpuDevice {
                 .map(EnvVar::to_string)
                 .collect::<Vec<_>>()
                 .join(" ");
-            write!(f, "  Environment: {}", env_str)?;
+            write!(f, "  Environment: {env_str}")?;
         }
 
         Ok(())

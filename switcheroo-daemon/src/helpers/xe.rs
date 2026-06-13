@@ -24,7 +24,7 @@ pub fn probe_fd(fd: RawFd) -> Result<bool, nix::Error> {
         ..Default::default()
     };
 
-    unsafe { ioctl_xe_device_query(fd, &mut query)? };
+    unsafe { ioctl_xe_device_query(fd, &raw mut query)? };
 
     let size = query.size as usize;
     if size < CONFIG_FLAGS_OFFSET + std::mem::size_of::<u64>() {
@@ -34,7 +34,7 @@ pub fn probe_fd(fd: RawFd) -> Result<bool, nix::Error> {
     let mut buf = vec![0u8; size];
     query.data = buf.as_mut_ptr() as u64;
 
-    unsafe { ioctl_xe_device_query(fd, &mut query)? };
+    unsafe { ioctl_xe_device_query(fd, &raw mut query)? };
 
     let flags = u64::from_ne_bytes(
         buf[CONFIG_FLAGS_OFFSET..CONFIG_FLAGS_OFFSET + 8]

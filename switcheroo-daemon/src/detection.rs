@@ -21,7 +21,7 @@ pub fn get_card_name(parent: &udev::Device) -> String {
         .or_else(|| get_property(parent, "ID_MODEL_FROM_DATABASE"));
 
     let raw_name = match (vendor, product) {
-        (Some(v), Some(p)) => format!("{} {}", v, p),
+        (Some(v), Some(p)) => format!("{v} {p}"),
         (Some(v), None) => v.to_string(),
         (None, Some(p)) => p.to_string(),
         (None, None) => "Unknown Graphics Controller".to_string(),
@@ -78,18 +78,16 @@ pub fn get_card_env(dev: &udev::Device, parent: &udev::Device) -> Vec<EnvVar> {
 pub fn scan_drm_cards() -> Vec<GpuDevice> {
     let mut cards = Vec::new();
 
-    let mut enumerator = match udev::Enumerator::new() {
-        Ok(e) => e,
-        Err(_) => return cards,
+    let Ok(mut enumerator) = udev::Enumerator::new() else {
+        return cards;
     };
 
     if enumerator.match_subsystem("drm").is_err() {
         return cards;
     }
 
-    let devices = match enumerator.scan_devices() {
-        Ok(iter) => iter,
-        Err(_) => return cards,
+    let Ok(devices) = enumerator.scan_devices() else {
+        return cards;
     };
 
     for device in devices {
@@ -98,9 +96,8 @@ pub fn scan_drm_cards() -> Vec<GpuDevice> {
             continue;
         }
 
-        let parent = match device.parent() {
-            Some(p) => p,
-            None => continue,
+        let Some(parent) = device.parent() else {
+            continue;
         };
 
         let env = get_card_env(&device, &parent);
@@ -112,8 +109,7 @@ pub fn scan_drm_cards() -> Vec<GpuDevice> {
         let default = parent
             .attribute_value("boot_vga")
             .and_then(|s| s.to_str())
-            .map(|s| s.trim() == "1")
-            .unwrap_or(false);
+            .is_some_and(|s| s.trim() == "1");
 
         // Extract the driver name to pass to our custom direct ioctl probes
         let driver = parent.driver().and_then(|s| s.to_str()).unwrap_or("");
@@ -140,10 +136,7 @@ pub fn scan_drm_cards() -> Vec<GpuDevice> {
 pub fn get_card_is_discrete(dev: &udev::Device) -> bool {
     // Direct FFI is much faster than parsing TAGS property (1.5 µs vs 65 µs).
     // Safe alternative: dev.property_value("TAGS") and split on ':'
-    CString::new("switcheroo-discrete-gpu")
-        .map(|tag| 
+    CString::new("switcheroo-discrete-gpu").is_ok_and(|tag| 
             // Both `dev` and `tag` are guaranteed to outlive the FFI call
-            unsafe { udev_device_has_tag(dev.as_raw(), tag.as_ptr()) == 1 }
-        )
-        .unwrap_or(false)
+            unsafe { udev_device_has_tag(dev.as_raw(), tag.as_ptr()) == 1 })
 }

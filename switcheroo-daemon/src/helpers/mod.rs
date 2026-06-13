@@ -17,10 +17,10 @@ pub fn probe(devnode: &str, driver: &str) -> bool {
         return true;
     }
 
-    let file = match OpenOptions::new().read(true).write(true).open(devnode) {
-        Ok(f) => f,
-        Err(_) => return false,
+    let Ok(file) = OpenOptions::new().read(true).write(true).open(devnode) else {
+        return false;
     };
+
     let fd = file.as_raw_fd();
 
     match driver {

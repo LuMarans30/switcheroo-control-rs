@@ -19,10 +19,10 @@ pub fn probe_fd(fd: RawFd) -> Result<bool, nix::Error> {
     let mut value = 0i32;
     let mut request = DrmI915GetParam {
         param: I915_PARAM_HAS_LMEM,
-        value: &mut value,
+        value: &raw mut value,
     };
 
-    unsafe { ioctl_i915_getparam(fd, &mut request)? };
+    unsafe { ioctl_i915_getparam(fd, &raw mut request)? };
 
     Ok(value > 0)
 }

@@ -113,7 +113,7 @@ pub fn probe_fd(fd: RawFd) -> Result<bool, nix::Error> {
         dev: NvDeviceV0 { device: !0u64 },
     };
 
-    unsafe { ioctl_nouveau_init(fd, &init_args)? };
+    unsafe { ioctl_nouveau_init(fd, &raw const init_args)? };
 
     let mut query_args = NouveauQueryArgs {
         ioctl: NvifIoctlV0 {
@@ -132,7 +132,7 @@ pub fn probe_fd(fd: RawFd) -> Result<bool, nix::Error> {
         info: NvDeviceInfoV0::default(),
     };
 
-    unsafe { ioctl_nouveau_query(fd, &mut query_args)? };
+    unsafe { ioctl_nouveau_query(fd, &raw mut query_args)? };
 
     Ok(!matches!(
         query_args.info.platform,

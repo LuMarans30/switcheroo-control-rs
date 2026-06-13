@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+use color_eyre::{Result, eyre::eyre};
 use zbus::{
     Connection,
     connection::Builder,
@@ -45,6 +46,7 @@ impl SwitcherooServer {
     }
 
     #[zbus(property, name = "NumGPUs")]
+    #[allow(clippy::cast_possible_truncation)]
     async fn num_gpus(&self) -> u32 {
         self.gpus_cache.read().await.len() as u32
     }
@@ -63,7 +65,7 @@ struct Cli {
 }
 
 #[tokio::main]
-async fn main() -> color_eyre::Result<()> {
+async fn main() -> Result<()> {
     color_eyre::install()?;
 
     let Cli { replace } = Cli::parse();
@@ -130,15 +132,12 @@ async fn main() -> color_eyre::Result<()> {
 }
 
 /// Handle replacement by another instance safely
-async fn handle_replacement(
-    connection: Connection,
-    shutdown: Sender<()>,
-) -> color_eyre::Result<()> {
+async fn handle_replacement(connection: Connection, shutdown: Sender<()>) -> Result<()> {
     let dbus_proxy = DBusProxy::new(&connection).await?;
     let mut owner_changes = dbus_proxy.receive_name_owner_changed().await?;
     let unique_name = connection
         .unique_name()
-        .ok_or_else(|| color_eyre::eyre::eyre!("Connection has no unique name"))?
+        .ok_or_else(|| eyre!("Connection has no unique name"))?
         .to_owned();
 
     while let Some(signal) = owner_changes.next().await {
@@ -171,16 +170,14 @@ async fn update_gpu_cache(cache_lock: &RwLock<Vec<GpuDevice>>) -> Option<Vec<Gpu
 
     let mut cache = cache_lock.write().await;
 
-    if *cache != new_cards {
-        *cache = new_cards.clone();
-        Some(new_cards)
-    } else {
-        None
-    }
+    (*cache != new_cards).then(|| {
+        cache.clone_from(&new_cards);
+        new_cards
+    })
 }
 
 /// Emits a `PropertiesChanged` signal to notify D-Bus clients of GPU updates
-async fn emit_gpu_signal(connection: &Connection, gpus: Vec<GpuDevice>) -> zbus::Result<()> {
+async fn emit_gpu_signal(connection: &Connection, gpus: Vec<GpuDevice>) -> Result<()> {
     let object_server = connection.object_server();
     let iface_ref = object_server
         .interface::<_, SwitcherooServer>(DBUS_PATH)
@@ -188,7 +185,7 @@ async fn emit_gpu_signal(connection: &Connection, gpus: Vec<GpuDevice>) -> zbus:
 
     let emitter = iface_ref.signal_context();
 
-    let num_gpus = gpus.len() as u32;
+    let num_gpus: u32 = gpus.len().try_into()?;
     let has_dual_gpu = num_gpus >= 2;
 
     Properties::properties_changed(
@@ -201,7 +198,9 @@ async fn emit_gpu_signal(connection: &Connection, gpus: Vec<GpuDevice>) -> zbus:
         ]),
         &[],
     )
-    .await
+    .await?;
+
+    Ok(())
 }
 
 /// Event loop that processes signals from the udev monitor thread with debouncing
@@ -227,7 +226,7 @@ async fn handle_hardware_events(
 }
 
 /// Non-blocking worker thread dedicated to watching Linux udev events
-async fn run_udev_monitor(tx: mpsc::Sender<()>) -> color_eyre::Result<()> {
+async fn run_udev_monitor(tx: mpsc::Sender<()>) -> Result<()> {
     let monitor = udev::MonitorBuilder::new()?
         .match_subsystem("drm")?
         .listen()?;
@@ -252,7 +251,7 @@ async fn run_udev_monitor(tx: mpsc::Sender<()>) -> color_eyre::Result<()> {
 }
 
 /// Blocks until a system termination signal is received
-async fn wait_for_shutdown() -> color_eyre::Result<()> {
+async fn wait_for_shutdown() -> Result<()> {
     let mut term = signal(SignalKind::terminate())?;
     tokio::select! {
         _ = tokio::signal::ctrl_c() => {},

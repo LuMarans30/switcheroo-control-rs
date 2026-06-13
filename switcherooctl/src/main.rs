@@ -47,9 +47,11 @@ async fn main() -> Result<()> {
 
     match cli.command.unwrap_or(Commands::List) {
         Commands::List => list_gpus(&gpus),
-        Commands::Launch { gpu, args } => launch_on_gpu(&gpus, gpu.or(cli.gpu), &args),
-        Commands::External(args) => launch_on_gpu(&gpus, cli.gpu, &args),
+        Commands::Launch { gpu, args } => launch_on_gpu(&gpus, gpu.or(cli.gpu), &args)?,
+        Commands::External(args) => launch_on_gpu(&gpus, cli.gpu, &args)?,
     }
+
+    Ok(())
 }
 
 /// Connects to the switcheroo proxy and fetches devices, handling daemon errors gracefully
@@ -72,24 +74,22 @@ async fn fetch_gpu_devices(connection: &zbus::Connection) -> Result<Vec<GpuDevic
 }
 
 /// Lists all the available GPUs
-fn list_gpus(gpus: &[GpuDevice]) -> Result<()> {
+fn list_gpus(gpus: &[GpuDevice]) {
     for (idx, gpu) in gpus.iter().enumerate() {
-        println!("Device: {}\n{}\n", idx, gpu);
+        println!("Device: {idx}\n{gpu}\n");
     }
-    Ok(())
 }
 
 /// Launches a program using the specified GPU
 fn launch_on_gpu(gpus: &[GpuDevice], gpu: Option<u32>, args: &[String]) -> Result<()> {
-    let gpu_idx = match gpu {
-        Some(id) => id as usize,
-        None => {
-            if gpus.is_empty() {
-                return Err(eyre!("No GPUs found on the system."));
-            }
-            gpus.iter().position(|g| g.discrete).unwrap_or(0)
-        }
-    };
+    if gpus.is_empty() {
+        return Err(eyre!("No GPUs found on the system."));
+    }
+
+    let gpu_idx = gpu.map_or_else(
+        || gpus.iter().position(|g| g.discrete).unwrap_or(0),
+        |id| id as usize,
+    );
 
     let target_gpu = gpus
         .get(gpu_idx)

@@ -42,13 +42,14 @@ pub fn probe_fd(fd: RawFd) -> Result<bool, nix::Error> {
     let mut device_info = DrmAmdgpuInfoDevice::default();
 
     let request = DrmAmdgpuInfo {
-        return_pointer: &mut device_info as *mut _ as u64,
+        return_pointer: &raw mut device_info as u64,
+        #[allow(clippy::cast_possible_truncation)]
         return_size: std::mem::size_of::<DrmAmdgpuInfoDevice>() as u32,
         query: AMDGPU_INFO_DEV_INFO,
         _reserved: [0; 16],
     };
 
-    unsafe { ioctl_amdgpu_info(fd, &request)? };
+    unsafe { ioctl_amdgpu_info(fd, &raw const request)? };
 
     Ok(device_info.ids_flags & AMDGPU_IDS_FLAGS_FUSION == 0)
 }

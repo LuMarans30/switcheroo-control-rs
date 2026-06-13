@@ -64,7 +64,7 @@ static REGEXES: LazyLock<Vec<(Regex, &'static str)>> = LazyLock::new(|| {
 
 static WS_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[ \t\n\r]+").expect("Invalid regex"));
 
-/// Mimics g_markup_escape_text to prevent Pango markup injection in GNOME
+/// Mimics `g_markup_escape_text` to prevent Pango markup injection in GNOME
 fn escape_markup(text: &str) -> Cow<'_, str> {
     if !text.contains(['&', '<', '>', '\'', '"']) {
         return Cow::Borrowed(text);
