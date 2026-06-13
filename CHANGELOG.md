@@ -1,3 +1,29 @@
+## [0.1.2] - 2026-06-13
+
+### ⚙️ Miscellaneous Tasks
+
+- *(readme)* Add concise READMEs for workspace members ([`cc7c5db`](https://github.com/LuMarans30/switcheroo-control-rs/commit/cc7c5dbf5708f30093dfa0e225727af98db1cc39))
+## [0.1.1] - 2026-06-13
+
+### 🚀 Features
+
+- *(cli,daemon)* Add version command and about description ([`889b14a`](https://github.com/LuMarans30/switcheroo-control-rs/commit/889b14a6c5f483979a75fe336e7b8e7ff107eb55))
+
+### 🐛 Bug Fixes
+
+- *(ci)* Replace deprecated toolchain actions ([`a02058e`](https://github.com/LuMarans30/switcheroo-control-rs/commit/a02058e6097881f203040c26e49d61fbf2672855))
+- *(ci)* Upgrade checkout action to v6 ([`1b3de90`](https://github.com/LuMarans30/switcheroo-control-rs/commit/1b3de9002e608ded5123d532c6474c425c1fbaca))
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* Add cliff.toml and CHANGELOG.md ([`772aff7`](https://github.com/LuMarans30/switcheroo-control-rs/commit/772aff74e0d99742dbdf607dcb4e3ce9707c07b0))
+- *(release)* Add commit SHA links to changelog template ([`fa84400`](https://github.com/LuMarans30/switcheroo-control-rs/commit/fa84400d29f5e3d9d257f5f044b722c19c63d1ed))
+- *(release)* Update CHANGELOG ([`2f4bc91`](https://github.com/LuMarans30/switcheroo-control-rs/commit/2f4bc919feca0cd75d4f7680323bbbc826ad26f9))
+- *(release)* Skip doc and refactor sections ([`8d8a69c`](https://github.com/LuMarans30/switcheroo-control-rs/commit/8d8a69c150501420f64622387c35e7db4887105f))
+- *(cargo)* Update repository link ([`3752502`](https://github.com/LuMarans30/switcheroo-control-rs/commit/37525027168b3d86e6b56890a04c626081f85433))
+- *(lints)* Add pedantic clippy configuration in workspace ([`22d1d7e`](https://github.com/LuMarans30/switcheroo-control-rs/commit/22d1d7ea076e883e390fae323bf20922608d9667))
+- *(clippy)* Add pedantic warnings into workflow ([`b8823e9`](https://github.com/LuMarans30/switcheroo-control-rs/commit/b8823e9e61d908ac72075785d6cd352bed2145c1))
+- Add crates descriptions ([`84c0a41`](https://github.com/LuMarans30/switcheroo-control-rs/commit/84c0a418cc479ffd0e57449f3cfb1b02027d1e86))
 ## [0.1.0] - 2026-06-13
 
 ### 🚀 Features
