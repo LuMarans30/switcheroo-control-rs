@@ -6,7 +6,7 @@ resolver = "2"
 version = "0.1.0"
 edition = "2024"
 license = "GPL-3.0-or-later"
-repository = "https://gitlab.freedesktop.org/hadess/switcheroo-control"
+repository = "https://github.com/LuMarans30/switcheroo-control-rs"
 
 [workspace.dependencies]
 color-eyre = "0.6.5"
