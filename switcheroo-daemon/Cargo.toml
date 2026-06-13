@@ -4,6 +4,7 @@ description = "Daemon for switcheroo-control-rs that monitors GPUs and exposes t
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
 
 [dependencies]
 switcheroo-common = { workspace = true }
