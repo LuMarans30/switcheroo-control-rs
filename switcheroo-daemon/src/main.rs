@@ -58,6 +58,7 @@ impl SwitcherooServer {
 }
 
 #[derive(Parser)]
+#[command(version, about = "Switcheroo D-Bus daemon")]
 struct Cli {
     /// Replace an already running instance of the daemon
     #[arg(short, long)]

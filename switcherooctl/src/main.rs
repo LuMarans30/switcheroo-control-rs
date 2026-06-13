@@ -12,6 +12,7 @@ use std::os::unix::process::CommandExt;
 use std::process::{Command, exit};
 
 #[derive(Parser)]
+#[command(version, about = "Switcheroo CLI utility")]
 struct Cli {
     #[arg(short = 'g', long = "gpu")]
     gpu: Option<u32>,
