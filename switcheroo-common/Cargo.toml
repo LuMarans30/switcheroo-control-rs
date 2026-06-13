@@ -1,5 +1,6 @@
 [package]
 name = "switcheroo-common"
+description = "Shared types for switcheroo-control-rs"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
