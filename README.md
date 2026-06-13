@@ -16,13 +16,59 @@ It reimplements the standard `net.hadess.SwitcherooControl` interface using the 
 
 Also, just like the original project, it includes a regex-based cleanup module to prettify GPU information before it is published over D-Bus
 
-### Crates
+### Workspace Members
 
 | Crate               | Description                                                                |
 | ------------------- | -------------------------------------------------------------------------- |
 | `switcheroo-daemon` | Background system service that monitors hardware and exposes it over D-Bus |
 | `switcherooctl`     | CLI utility used to list GPUs and launch binaries using a specific GPU     |
 | `switcheroo-common` | Shared types, serialization/deserialization logic and D-Bus definitions    |
+
+### Architecture
+
+```mermaid
+flowchart TB
+    User((User))
+
+    subgraph Userspace [Userspace Context]
+        CLI(switcherooctl)
+        Daemon(switcheroo-daemon)
+        DBus{{D-Bus System Bus}}
+        TargetApp[[Target Application]]
+    end
+
+    subgraph OS_Kernel [OS & Kernel Interface]
+        subgraph UdevSub [udev Subsystem]
+            Udev[udev crate]
+            LibUdev[libudev C FFI]
+        end
+
+        subgraph IOCTL_Sub [DRM Subsystem]
+            DRM_Nodes[(/dev/dri/render*)]
+            Drivers[\amdgpu, i915, xe, nouveau, nvidia/]
+        end
+    end
+
+    User -->|Runs| CLI
+    
+    CLI -->|Queries GPUs| DBus
+    DBus <-->|net.hadess.SwitcherooControl| Daemon
+    DBus -->|GPU info & env| CLI
+    
+    CLI -.->|Spawns with env vars| TargetApp
+    
+    Daemon -->|Queries GPUs & watch events| Udev
+    Udev -->|GPUs info & events| Daemon
+    
+    Daemon -->|switcheroo-discrete-gpu tag check| LibUdev
+    LibUdev -->|is_discrete| Daemon
+    
+    Daemon -->|IOCTL probe| DRM_Nodes
+    DRM_Nodes -->|VRAM / LMEM status| Daemon
+    
+    DRM_Nodes --- Drivers
+    TargetApp -.->|Render offload| Drivers
+```
 
 ### Usage
 
