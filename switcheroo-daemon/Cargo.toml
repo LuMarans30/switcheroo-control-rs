@@ -14,3 +14,6 @@ udev = { version = "0.9.3", features = ["sync"] }
 regex = "1.12.4"
 nix = { version = "0.31.3", features = ["ioctl"] }
 futures-lite = "2.6.1"
+
+[lints]
+workspace = true

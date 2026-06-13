@@ -13,3 +13,7 @@ color-eyre = "0.6.5"
 zbus = "4.0"
 tokio = { version = "1.52.3", features = ["full", "signal"] }
 clap = { version = "4.6.1", features = ["derive"] }
+
+[workspace.lints.clippy]
+pedantic = "warn"
+all = "warn"
