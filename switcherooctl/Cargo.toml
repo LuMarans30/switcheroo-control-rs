@@ -1,6 +1,6 @@
 [package]
 name = "switcherooctl"
-description = "CLI utility to list GPUs and launch binaries using a specific GPU"
+description = "CLI client for switcheroo-control-rs used to list GPUs and launch binaries on a specific GPU"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

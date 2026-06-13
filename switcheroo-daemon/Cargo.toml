@@ -1,6 +1,6 @@
 [package]
 name = "switcheroo-daemon"
-description = "Daemon that monitors GPUs and exposes their info over D-Bus"
+description = "Daemon for switcheroo-control-rs that monitors GPUs and exposes them over D-Bus"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
