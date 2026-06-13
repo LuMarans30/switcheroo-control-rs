@@ -13,7 +13,7 @@ color-eyre = "0.6.5"
 zbus = "4.0"
 tokio = { version = "1.52.3", features = ["full", "signal"] }
 clap = { version = "4.6.1", features = ["derive"] }
-switcheroo-common = { path = "switcheroo-common", version = "0.1.0" }
+switcheroo-common = { path = "switcheroo-common", version = "0.1.2" }
 
 [workspace.lints.clippy]
 pedantic = "warn"
