@@ -27,27 +27,6 @@
 - *(cleanup)* Add GTX to regex ([`1bf862b`](https://github.com/LuMarans30/switcheroo-control-rs/commit/1bf862bb69518809948ca0e78077fe69bc393627))
 - *(daemon)* Minor bug fixes to amdgpu and startup logic ([`6266db7`](https://github.com/LuMarans30/switcheroo-control-rs/commit/6266db71ef13773a50fc7578b140eaf81e1291d1))
 
-### 🚜 Refactor
-
-- *(common)* Remove dead code ([`dea3e51`](https://github.com/LuMarans30/switcheroo-control-rs/commit/dea3e5134134252befcc08061d215dfea1a4ae10))
-- *(common)* Cleaner Display for GpuDevice ([`7df571a`](https://github.com/LuMarans30/switcheroo-control-rs/commit/7df571abfbcf72be0419fdfb105841da511e5783))
-- *(common)* Use manual zvariant impls and clean EnvVar API ([`1ec2eea`](https://github.com/LuMarans30/switcheroo-control-rs/commit/1ec2eeae016937758c996d2072b43fc631d3aec6))
-- *(daemon)* Improve already-running daemon error message ([`783c5f8`](https://github.com/LuMarans30/switcheroo-control-rs/commit/783c5f85f73bae2c46145bba29f23ebe4e1edb3b))
-- *(daemon)* Extract udev and hardware event loops ([`74383d6`](https://github.com/LuMarans30/switcheroo-control-rs/commit/74383d684a658f8d4a7947729c4e80dcb8541dbe))
-- *(cli)* Improve function names ([`c97630d`](https://github.com/LuMarans30/switcheroo-control-rs/commit/c97630d4d7f7d554ef12305dc0af1fa12478ee2e))
-- *(daemon)* Use PropertiesChanged for D-Bus signal emission ([`114dd9a`](https://github.com/LuMarans30/switcheroo-control-rs/commit/114dd9a2ef60d7e6156dae6f99d625c104652355))
-- *(cleanup)* Use LazyLock for static initialization ([`b4173ae`](https://github.com/LuMarans30/switcheroo-control-rs/commit/b4173ae1025c22379995a1a664c00e939e791069))
-- *(common)* Split lib.rs into env_var and gpu_device modules ([`41c0ad0`](https://github.com/LuMarans30/switcheroo-control-rs/commit/41c0ad02e3554286d73be20aa55250c898d419d4))
-- *(daemon)* Use matches! for daemon running check ([`f0c0457`](https://github.com/LuMarans30/switcheroo-control-rs/commit/f0c04570ae829bfbfa6e9d9cc4c0e63a9f7fe3c4))
-
-### 📚 Documentation
-
-- *(readme)* Improve README ([`4621f17`](https://github.com/LuMarans30/switcheroo-control-rs/commit/4621f17652c91c8984868f0c3cea033412dfd421))
-- *(readme)* Add WIP to title ([`88da80b`](https://github.com/LuMarans30/switcheroo-control-rs/commit/88da80bef9aec27dc7dc56fa58f44a220961bd16))
-- *(detection)* Explain why unsafe FFI call is sound ([`f024722`](https://github.com/LuMarans30/switcheroo-control-rs/commit/f024722430d5effd4f76917edeeb2f038ff71ca3))
-- *(readme)* Update following major changes ([`4fd37c2`](https://github.com/LuMarans30/switcheroo-control-rs/commit/4fd37c2ddf727aad18d49210f38442b01a799aaf))
-- *(readme)* Add architectural Mermaid diagram ([`512cd85`](https://github.com/LuMarans30/switcheroo-control-rs/commit/512cd8586903415c82f88fe0b97baa015e1091f6))
-
 ### ⚡ Performance
 
 - *(detection)* Optimize discrete GPU detection with direct udev FFI ([`eedfd97`](https://github.com/LuMarans30/switcheroo-control-rs/commit/eedfd974c1539591b150ad09a11212e78a92e6a7))
