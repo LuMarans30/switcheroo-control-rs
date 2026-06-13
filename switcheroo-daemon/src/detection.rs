@@ -74,7 +74,8 @@ pub fn get_card_env(dev: &udev::Device, parent: &udev::Device) -> Vec<EnvVar> {
 
     env
 }
-/// Scans the system for all DRM cards and builds our cache
+
+/// Scans the system for all DRM cards and builds the cache
 pub fn scan_drm_cards() -> Vec<GpuDevice> {
     let mut cards = Vec::new();
 
@@ -133,8 +134,9 @@ pub fn scan_drm_cards() -> Vec<GpuDevice> {
     cards
 }
 
+/// Determines whether a given `udev` device represents a discrete GPU
 pub fn get_card_is_discrete(dev: &udev::Device) -> bool {
-    // Direct FFI is much faster than parsing TAGS property (1.5 µs vs 65 µs).
+    // Direct FFI is much faster than parsing TAGS property (1.5 µs vs 65 µs)
     // Safe alternative: dev.property_value("TAGS") and split on ':'
     CString::new("switcheroo-discrete-gpu").is_ok_and(|tag| 
             // Both `dev` and `tag` are guaranteed to outlive the FFI call

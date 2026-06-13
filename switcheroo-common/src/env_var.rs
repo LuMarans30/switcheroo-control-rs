@@ -3,6 +3,7 @@ use std::fmt;
 use serde::{Deserialize, Serialize};
 use zbus::zvariant::{OwnedValue, Type, Value};
 
+/// Represents an environment variable key-value pair required to offload rendering to a specific GPU
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Value, OwnedValue, PartialEq)]
 pub struct EnvVar {
     pub key: String,

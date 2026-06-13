@@ -8,8 +8,7 @@ mod i915;
 mod nouveau;
 mod xe;
 
-/// Determines whether the GPU at `devnode` (a DRM render node such as
-/// `/dev/dri/renderD128`) driven by `driver` is a discrete (dedicated) GPU.
+/// Determines whether the GPU at `devnode` is a discrete GPU (has dedicated VRAM)
 pub fn probe(devnode: &str, driver: &str) -> bool {
     // The proprietary NVIDIA driver lacks standard DRM ioctls
     // Also NVIDIA does not make integrated x86 GPUs

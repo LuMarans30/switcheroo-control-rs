@@ -84,6 +84,7 @@ fn escape_markup(text: &str) -> Cow<'_, str> {
     Cow::Owned(result)
 }
 
+/// Sanitizes and formats a raw GPU hardware string for UIs
 pub fn info_cleanup(input: &str) -> String {
     if input.is_empty() {
         return String::new();

@@ -4,6 +4,7 @@ use switcheroo_common::GpuDevice;
 
 use zbus::{Result, proxy};
 
+/// A D-Bus proxy interface for communicating with the Switcheroo daemon
 #[proxy(
     interface = "net.hadess.SwitcherooControl",
     default_service = "net.hadess.SwitcherooControl",
