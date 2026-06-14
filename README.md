@@ -1,5 +1,9 @@
 ## Switcheroo Rust Port
 
+[![switcheroo-daemon](https://img.shields.io/static/v1?label=switcheroo-daemon&message=crates.io&color=orange&logo=rust)](https://crates.io/crates/switcheroo-daemon)
+[![switcherooctl](https://img.shields.io/static/v1?label=switcherooctl&message=crates.io&color=orange&logo=rust)](https://crates.io/crates/switcherooctl)
+[![switcheroo-common](https://img.shields.io/static/v1?label=switcheroo-common&message=crates.io&color=orange&logo=rust)](https://crates.io/crates/switcheroo-common)
+
 A Rust port of the original [switcheroo-control daemon and CLI tool](https://gitlab.freedesktop.org/hadess/switcheroo-control) by [Bastien Nocera](https://gitlab.freedesktop.org/hadess).
 
 From a [switcheroo-control man page](https://linuxcommandlibrary.com/man/switcheroo-control):
