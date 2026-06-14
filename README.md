@@ -1,4 +1,4 @@
-## Switcheroo Rust Port
+# Switcheroo Rust Port
 
 [![switcheroo-daemon](https://img.shields.io/static/v1?label=switcheroo-daemon&message=crates.io&color=orange&logo=rust)](https://crates.io/crates/switcheroo-daemon)
 [![switcherooctl](https://img.shields.io/static/v1?label=switcherooctl&message=crates.io&color=orange&logo=rust)](https://crates.io/crates/switcherooctl)
@@ -23,7 +23,7 @@ It reimplements the standard `net.hadess.SwitcherooControl` interface using the 
 
 Also, just like the original project, it includes a regex-based cleanup module to prettify GPU information before it is published over D-Bus
 
-### Workspace Members
+## Workspace Members
 
 | Crate               | Description                                                                |
 | ------------------- | -------------------------------------------------------------------------- |
@@ -31,7 +31,7 @@ Also, just like the original project, it includes a regex-based cleanup module t
 | `switcherooctl`     | CLI utility used to list GPUs and launch binaries using a specific GPU     |
 | `switcheroo-common` | Shared types, serialization/deserialization logic and D-Bus definitions    |
 
-### Architecture
+## Architecture
 
 ```mermaid
 flowchart TB
@@ -52,7 +52,7 @@ flowchart TB
 
         subgraph IOCTL_Sub [DRM Subsystem]
             DRM_Nodes[(/dev/dri/render*)]
-            Drivers[\amdgpu, i915, xe, nouveau, nvidia/]
+            Drivers[/amdgpu, i915, xe, nouveau, nvidia/]
         end
     end
 
@@ -77,7 +77,7 @@ flowchart TB
     TargetApp -.->|Render offload| Drivers
 ```
 
-### Usage
+## Installation
 
 Ensure you have the `libudev` library installed where it can be found by `pkg-config`. 
 
@@ -86,19 +86,45 @@ Example:
 ```bash
 sudo apt-get install libudev-dev    # Debian-based Linux distributions
 sudo zypper install systemd-devel   # openSUSE/SLE
+sudo dnf install systemd-devel      # Fedora/RHEL
 ```
 
-Compile a release build using [Cargo](https://rustup.rs/):
+You can either compile a release build using [Cargo](https://rustup.rs/):
 
 ```bash
+git clone https://github.com/LuMarans30/switcheroo-control-rs
+cd switcheroo-control-rs
 cargo build --release
 ```
 
-To test the daemon locally, stop the existing system service first to avoid D-Bus conflicts:
+**OR**
+
+Install them from crates.io:
+
+```bash
+cargo install switcherooctl switcheroo-daemon
+```
+
+### System Service Installation (Optional)
+
+You can install the provided Systemd and D-Bus configuration files to automatically start the daemon on boot as a service:
+
+```bash
+sudo cp ./data/switcheroo-daemon.service /usr/lib/systemd/system/
+sudo cp ./data/net.hadess.SwitcherooControl.conf /usr/share/dbus-1/system.d/
+sudo cp ./target/release/switcheroo-daemon /usr/libexec
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now switcheroo-daemon
+```
+
+## Usage
+
+To test the daemon manually, stop the original system service first to avoid D-Bus conflicts:
 
 ```bash
 sudo systemctl stop switcheroo-control
-sudo ./target/release/switcheroo-daemon
+sudo env "PATH=$PATH" switcheroo-daemon # or sudo ./target/release/switcheroo-daemon
 ```
 
 > [!TIP]
@@ -108,7 +134,7 @@ sudo ./target/release/switcheroo-daemon
 You can now use the CLI tool:
 
 ```bash
-./target/release/switcherooctl help
+switcherooctl help
 ```
 
 ```bash
@@ -124,22 +150,22 @@ Options:
   -h, --help       Print help
 ```
 
-### Example
+## Example
 
-Launch the glmark2's refract benchmark on a discrete GPU:
+Launch glmark2's refract benchmark on a discrete GPU:
 
 ```bash
-./target/release/switcherooctl launch --gpu 1 glmark2 -b refract
+switcherooctl launch --gpu 1 glmark2 -b refract
 ```
 
 For simplicity, you can also omit subcommands:
 
 ```bash
-./target/release/switcherooctl            # "switcherooctl list"
-./target/release/switcherooctl <program>  # "switcherooctl launch <program>" 
+switcherooctl            # "switcherooctl list"
+switcherooctl <program>  # "switcherooctl launch <program>" 
 ```
 
-### Performance
+## Performance
 
 The Rust CLI shows significant performance gains over the Python CLI by eliminating the interpreter startup overhead. 
 The Rust daemon has roughly the same performance and memory footprint as the original C daemon.
@@ -147,12 +173,12 @@ The Rust daemon has roughly the same performance and memory footprint as the ori
 Below are some benchmarks using [`hyperfine`](https://github.com/sharkdp/hyperfine). 
 To demonstrate full interoperability, I tested the clients against both daemons.
 
-#### Using the `switcheroo-daemon`
+### Using the `switcheroo-daemon`
 
 List GPUs:
 
 ```bash
-~/projects/switcheroo-control-rs > hyperfine --warmup 10 -N \         λ:master
+~/projects/switcheroo-control-rs > hyperfine --warmup 10 -N \
   'switcherooctl list' \
   './target/release/switcherooctl list'
 Benchmark 1: switcherooctl list
@@ -187,12 +213,12 @@ Summary
     1.80 ± 0.27 times faster than switcherooctl launch glxinfo -B
 ```
 
-#### Using the original `switcheroo-control` service
+### Using the original `switcheroo-control` service
 
 List GPUs:
 
 ```bash
-~/projects/switcheroo-control-rs > hyperfine --warmup 10 -N \         λ:master
+~/projects/switcheroo-control-rs > hyperfine --warmup 10 -N \
   'switcherooctl list' \
   './target/release/switcherooctl list'
 Benchmark 1: switcherooctl list
@@ -227,7 +253,7 @@ Summary
     1.90 ± 0.33 times faster than switcherooctl launch glxinfo -B
 ```
 
-#### Memory footprint
+### Memory footprint
 
 The Rust CLI also has a much smaller memory footprint:
 
@@ -251,6 +277,6 @@ The daemons have roughly the same memory footprint:
  133147  9380 switcheroo-daem
 ```
 
-### License
+## License
 
 The project is licensed under `GPL-3.0-or-later` to match upstream.
