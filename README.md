@@ -3,6 +3,9 @@
 [![switcheroo-daemon](https://img.shields.io/static/v1?label=switcheroo-daemon&message=crates.io&color=orange&logo=rust)](https://crates.io/crates/switcheroo-daemon)
 [![switcherooctl](https://img.shields.io/static/v1?label=switcherooctl&message=crates.io&color=orange&logo=rust)](https://crates.io/crates/switcherooctl)
 [![switcheroo-common](https://img.shields.io/static/v1?label=switcheroo-common&message=crates.io&color=orange&logo=rust)](https://crates.io/crates/switcheroo-common)
+[![CI](https://github.com/LuMarans30/switcheroo-control-rs/actions/workflows/rust-clippy.yml/badge.svg)](https://github.com/LuMarans30/switcheroo-control-rs/actions)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Linux](https://img.shields.io/badge/OS-Linux-green)](https://www.linux.org/)
 
 A Rust port of the original [switcheroo-control daemon and CLI tool](https://gitlab.freedesktop.org/hadess/switcheroo-control) by [Bastien Nocera](https://gitlab.freedesktop.org/hadess).
 
