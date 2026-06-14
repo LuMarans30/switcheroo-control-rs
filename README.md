@@ -132,6 +132,118 @@ For simplicity, you can also omit subcommands:
 ./target/release/switcherooctl <program>  # "switcherooctl launch <program>" 
 ```
 
+### Performance
+
+The Rust CLI shows significant performance gains over the Python CLI by eliminating the interpreter startup overhead. 
+The Rust daemon has roughly the same performance and memory footprint as the original C daemon.
+
+Below are some benchmarks using [`hyperfine`](https://github.com/sharkdp/hyperfine). 
+To demonstrate full interoperability, I tested the clients against both daemons.
+
+#### Using the `switcheroo-daemon`
+
+List GPUs:
+
+```bash
+~/projects/switcheroo-control-rs > hyperfine --warmup 10 -N \         λ:master
+  'switcherooctl list' \
+  './target/release/switcherooctl list'
+Benchmark 1: switcherooctl list
+  Time (mean ± σ):     138.9 ms ±  34.0 ms    [User: 111.2 ms, System: 26.4 ms]
+  Range (min … max):   104.5 ms … 227.5 ms    19 runs
+
+Benchmark 2: ./target/release/switcherooctl list
+  Time (mean ± σ):       5.6 ms ±   1.1 ms    [User: 1.7 ms, System: 5.7 ms]
+  Range (min … max):     3.4 ms …  11.1 ms    711 runs
+
+Summary
+  ./target/release/switcherooctl list ran
+   24.62 ± 7.74 times faster than switcherooctl list
+```
+
+Launch glxinfo:
+
+```bash
+~/projects/switcheroo-control-rs > hyperfine --warmup 10 --min-runs 50 -N \
+  'switcherooctl launch glxinfo -B' \
+  './target/release/switcherooctl launch glxinfo -B'
+Benchmark 1: switcherooctl launch glxinfo -B
+  Time (mean ± σ):     262.3 ms ±  31.8 ms    [User: 122.3 ms, System: 133.1 ms]
+  Range (min … max):   221.5 ms … 364.4 ms    50 runs
+
+Benchmark 2: ./target/release/switcherooctl launch glxinfo -B
+  Time (mean ± σ):     146.0 ms ±  12.6 ms    [User: 34.0 ms, System: 107.4 ms]
+  Range (min … max):   123.0 ms … 172.8 ms    50 runs
+
+Summary
+  ./target/release/switcherooctl launch glxinfo -B ran
+    1.80 ± 0.27 times faster than switcherooctl launch glxinfo -B
+```
+
+#### Using the original `switcheroo-control` service
+
+List GPUs:
+
+```bash
+~/projects/switcheroo-control-rs > hyperfine --warmup 10 -N \         λ:master
+  'switcherooctl list' \
+  './target/release/switcherooctl list'
+Benchmark 1: switcherooctl list
+  Time (mean ± σ):     153.8 ms ±  45.9 ms    [User: 120.3 ms, System: 32.2 ms]
+  Range (min … max):   102.7 ms … 236.2 ms    27 runs
+
+Benchmark 2: ./target/release/switcherooctl list
+  Time (mean ± σ):       5.9 ms ±   1.1 ms    [User: 1.8 ms, System: 5.9 ms]
+  Range (min … max):     3.5 ms …  12.6 ms    478 runs
+
+Summary
+  ./target/release/switcherooctl list ran
+   26.01 ± 9.07 times faster than switcherooctl list
+```
+
+Launch glxinfo:
+
+```bash
+~/projects/switcheroo-control-rs > hyperfine --warmup 10 --min-runs 50 -N \
+  'switcherooctl launch glxinfo -B' \
+  './target/release/switcherooctl launch glxinfo -B'
+Benchmark 1: switcherooctl launch glxinfo -B
+  Time (mean ± σ):     270.2 ms ±  40.9 ms    [User: 130.1 ms, System: 133.1 ms]
+  Range (min … max):   214.3 ms … 359.0 ms    50 runs
+
+Benchmark 2: ./target/release/switcherooctl launch glxinfo -B
+  Time (mean ± σ):     142.1 ms ±  11.3 ms    [User: 31.2 ms, System: 106.4 ms]
+  Range (min … max):   119.5 ms … 177.0 ms    50 runs
+
+Summary
+  ./target/release/switcherooctl launch glxinfo -B ran
+    1.90 ± 0.33 times faster than switcherooctl launch glxinfo -B
+```
+
+#### Memory footprint
+
+The Rust CLI also has a much smaller memory footprint:
+
+```bash
+~/projects/switcheroo-control-rs > /usr/bin/time -v ./target/release/switcherooctl list 2>&1 | grep "Maximum resident set size"
+        Maximum resident set size (kbytes): 6024
+
+~/projects/switcheroo-control-rs > /usr/bin/time -v switcherooctl list 2>&1 | grep "Maximum resident set size"
+        Maximum resident set size (kbytes): 31740
+```
+
+The daemons have roughly the same memory footprint:
+
+```bash
+~/projects/switcheroo-control-rs > ps -o pid,rss,comm -C switcheroo-control
+    PID   RSS COMMAND
+ 117108  9056 switcheroo-cont
+
+~/projects/switcheroo-control-rs > ps -o pid,rss,comm -C switcheroo-daemon
+    PID   RSS COMMAND
+ 133147  9380 switcheroo-daem
+```
+
 ### License
 
 The project is licensed under `GPL-3.0-or-later` to match upstream.
