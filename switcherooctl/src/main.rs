@@ -97,11 +97,7 @@ fn launch_on_gpu(gpus: &[GpuDevice], gpu: Option<u32>, args: &[String]) -> Resul
         .ok_or_else(|| eyre!("GPU index {} not found", gpu_idx))?;
 
     let mut cmd = Command::new(&args[0]);
-    if args.len() > 1 {
-        cmd.args(&args[1..]);
-    }
-
-    target_gpu.apply_env(&mut cmd);
+    target_gpu.apply_env(cmd.args(&args[1..]));
 
     let err = cmd.exec();
     eprintln!("switcherooctl: failed to execute '{}': {}", args[0], err);
