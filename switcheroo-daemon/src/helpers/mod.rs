@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+use color_eyre::Result;
 use std::fs::OpenOptions;
 use std::os::unix::io::AsRawFd;
 
@@ -9,24 +10,23 @@ mod nouveau;
 mod xe;
 
 /// Determines whether the GPU at `devnode` is a discrete GPU (has dedicated VRAM)
-pub fn probe(devnode: &str, driver: &str) -> bool {
+pub fn probe(devnode: &str, driver: &str) -> Result<bool> {
     // The proprietary NVIDIA driver lacks standard DRM ioctls
     // Also NVIDIA does not make integrated x86 GPUs
     if driver == "nvidia" {
-        return true;
+        return Ok(true);
     }
 
-    let Ok(file) = OpenOptions::new().read(true).write(true).open(devnode) else {
-        return false;
-    };
-
+    let file = OpenOptions::new().read(true).write(true).open(devnode)?;
     let fd = file.as_raw_fd();
 
-    match driver {
-        "amdgpu" => amdgpu::probe_fd(fd).unwrap_or(false),
-        "xe" => xe::probe_fd(fd).unwrap_or(false),
-        "nouveau" => nouveau::probe_fd(fd).unwrap_or(false),
-        "i915" => i915::probe_fd(fd).unwrap_or(false),
+    let is_discrete = match driver {
+        "amdgpu" => amdgpu::probe_fd(fd)?,
+        "xe" => xe::probe_fd(fd)?,
+        "nouveau" => nouveau::probe_fd(fd)?,
+        "i915" => i915::probe_fd(fd)?,
         _ => false,
-    }
+    };
+
+    Ok(is_discrete)
 }

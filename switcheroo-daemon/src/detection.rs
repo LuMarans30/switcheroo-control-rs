@@ -114,7 +114,11 @@ pub fn scan_drm_cards() -> Vec<GpuDevice> {
 
         // Extract the driver name to pass to our custom direct ioctl probes
         let driver = parent.driver().and_then(|s| s.to_str()).unwrap_or("");
-        let discrete = get_card_is_discrete(&device) || crate::helpers::probe(devnode, driver);
+        let discrete = get_card_is_discrete(&device)
+            || crate::helpers::probe(devnode, driver).unwrap_or_else(|e| {
+                eprintln!("Failed to probe discrete status for {driver} at {devnode}: {e}");
+                false
+            });
 
         cards.push(GpuDevice {
             name: get_card_name(&parent),
