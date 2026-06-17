@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use std::ffi::CString;
+use std::{ffi::CString, sync::LazyLock};
 
 use switcheroo_common::EnvVar;
 use udev::{AsRawWithContext, ffi::udev_device_has_tag};
@@ -138,11 +138,11 @@ pub fn scan_drm_cards() -> Vec<GpuDevice> {
     cards
 }
 
+static DISCRETE_TAG: LazyLock<CString> =
+    LazyLock::new(|| CString::new("switcheroo-discrete-gpu").unwrap());
+
 /// Determines whether a given `udev` device represents a discrete GPU
 pub fn get_card_is_discrete(dev: &udev::Device) -> bool {
     // Direct FFI is much faster than parsing TAGS property (1.5 µs vs 65 µs)
-    // Safe alternative: dev.property_value("TAGS") and split on ':'
-    CString::new("switcheroo-discrete-gpu").is_ok_and(|tag| 
-            // Both `dev` and `tag` are guaranteed to outlive the FFI call
-            unsafe { udev_device_has_tag(dev.as_raw(), tag.as_ptr()) == 1 })
+    unsafe { udev_device_has_tag(dev.as_raw(), DISCRETE_TAG.as_ptr()) == 1 }
 }
