@@ -12,10 +12,10 @@ zbus = { workspace = true }
 color-eyre = { workspace = true }
 tokio = { workspace = true }
 clap = { workspace = true }
-udev = { version = "0.9.3", features = ["sync"] }
-regex = "1.12.4"
-nix = { version = "0.31.3", features = ["ioctl"] }
-futures-lite = "2.6.1"
+udev = { workspace = true }
+regex = { workspace = true }
+nix = { workspace = true }
+futures-lite = { workspace = true }
 
 [lints]
 workspace = true
