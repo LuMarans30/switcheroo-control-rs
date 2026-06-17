@@ -245,8 +245,8 @@ async fn run_udev_monitor(tx: mpsc::Sender<()>) -> Result<()> {
 
         drop(guard);
 
-        if event_count > 0 && tx.send(()).await.is_err() {
-            return Ok(());
+        if event_count > 0 {
+            let _ = tx.send(()).await;
         }
     }
 }
