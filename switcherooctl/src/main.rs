@@ -98,7 +98,8 @@ fn launch_on_gpu(gpus: &[GpuDevice], gpu: Option<u32>, args: &[String]) -> Resul
         .get(gpu_idx)
         .ok_or_else(|| eyre!("GPU index {} not found", gpu_idx))?;
 
-    let mut cmd = Command::new(&args[0]);
+    let program = args.first().ok_or_else(|| eyre!("no command given"))?;
+    let mut cmd = Command::new(program);
     target_gpu.apply_env(cmd.args(&args[1..]));
 
     let err = cmd.exec();
