@@ -67,7 +67,8 @@ async fn fetch_gpu_devices(connection: &zbus::Connection) -> Result<Vec<GpuDevic
                 eyre!("The switcheroo daemon is not running or installed.")
             }
             zbus::fdo::Error::NoReply(_) | zbus::fdo::Error::Timeout(_) => {
-                let service_name = SwitcherooProxy::DESTINATION.unwrap_or("switcheroo");
+                let service_name = SwitcherooProxy::DESTINATION
+                    .expect("Switcheroo proxy must have a default service name");
                 eyre!("Service '{service_name}' is registered but failed to respond.")
             }
             err => err.into(),
