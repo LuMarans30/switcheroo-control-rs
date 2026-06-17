@@ -17,4 +17,3 @@ switcheroo-common = { path = "switcheroo-common", version = "0.1.2" }
 
 [workspace.lints.clippy]
 pedantic = "warn"
-all = "warn"
