@@ -16,9 +16,7 @@ pub struct GpuDevice {
 impl GpuDevice {
     /// Applies all necessary GPU environment variables to a given `Command` before its spawned
     pub fn apply_env(&self, cmd: &mut std::process::Command) {
-        for env in &self.environment {
-            env.apply(cmd);
-        }
+        cmd.envs(self.environment.iter().map(std::convert::Into::into));
     }
 }
 

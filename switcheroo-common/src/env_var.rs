@@ -10,14 +10,14 @@ pub struct EnvVar {
     pub value: String,
 }
 
-impl EnvVar {
-    pub fn apply(&self, cmd: &mut std::process::Command) {
-        cmd.env(&self.key, &self.value);
-    }
-}
-
 impl fmt::Display for EnvVar {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}={}", self.key, self.value)
+    }
+}
+
+impl<'a> From<&'a EnvVar> for (&'a str, &'a str) {
+    fn from(env_var: &'a EnvVar) -> Self {
+        (env_var.key.as_str(), env_var.value.as_str())
     }
 }
