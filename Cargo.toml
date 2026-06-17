@@ -11,7 +11,7 @@ repository = "https://github.com/LuMarans30/switcheroo-control-rs"
 [workspace.dependencies]
 color-eyre = "0.6.5"
 zbus = "4.0"
-tokio = { version = "1.52.3", features = ["full", "signal"] }
+tokio = { version = "1.52.3", features = ["full"] }
 clap = { version = "4.6.1", features = ["derive"] }
 switcheroo-common = { path = "switcheroo-common", version = "0.1.2" }
 
