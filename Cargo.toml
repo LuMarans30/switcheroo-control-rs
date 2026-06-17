@@ -21,7 +21,7 @@ futures-lite = "2.6.1"
 log = "0.4.32"
 env_logger = "0.11.10"
 systemd-journal-logger = "2.2.2"
-switcheroo-common = { path = "switcheroo-common" }
+switcheroo-common = { path = "switcheroo-common", version = "0.1.3" }
 
 [workspace.lints.clippy]
 pedantic = "warn"
