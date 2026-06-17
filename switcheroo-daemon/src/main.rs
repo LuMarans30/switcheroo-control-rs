@@ -68,6 +68,8 @@ struct Cli {
 #[tokio::main]
 async fn main() -> Result<()> {
     color_eyre::install()?;
+    systemd_journal_logger::JournalLog::new()?.install()?;
+    log::set_max_level(log::LevelFilter::Info);
 
     let Cli { replace } = Cli::parse();
 
@@ -92,13 +94,13 @@ async fn main() -> Result<()> {
         .await?;
 
     if matches!(reply, RequestNameReply::InQueue | RequestNameReply::Exists) {
-        eprintln!("Switcheroo daemon is already running (name taken). Exiting gracefully.");
+        log::error!("Switcheroo daemon is already running (name taken). Exiting gracefully.");
         exit(0);
     }
 
     // Initial hardware scan
     update_gpu_cache(&gpus_cache).await;
-    println!("Switcheroo Daemon running...");
+    log::info!("Switcheroo Daemon running...");
 
     // Monitor cards
     let (tx, rx) = mpsc::channel::<()>(16);
@@ -118,17 +120,23 @@ async fn main() -> Result<()> {
         }
     };
 
-    println!("{shut_reason}. Shutting down...");
+    log::info!("{shut_reason}. Shutting down...");
 
     udev_handle.abort();
     event_handle.abort();
     replacement_handle.abort();
 
-    let _ = udev_handle.await;
-    let _ = event_handle.await;
-    let _ = replacement_handle.await;
+    if let Err(e) = udev_handle.await {
+        log::error!("udev monitor task failed: {e}");
+    }
+    if let Err(e) = event_handle.await {
+        log::error!("hardware event task failed: {e}");
+    }
+    if let Err(e) = replacement_handle.await {
+        log::error!("replacement task failed: {e}");
+    }
 
-    println!("Switcheroo Daemon stopped.");
+    log::info!("Switcheroo Daemon stopped.");
     Ok(())
 }
 
@@ -164,7 +172,7 @@ async fn update_gpu_cache(cache_lock: &RwLock<Vec<GpuDevice>>) -> Option<Vec<Gpu
     let new_cards = match tokio::task::spawn_blocking(scan_drm_cards).await {
         Ok(cards) => cards,
         Err(e) => {
-            eprintln!("scan_drm_cards panicked: {e}");
+            log::error!("scan_drm_cards panicked: {e}");
             return None;
         }
     };
@@ -217,13 +225,13 @@ async fn handle_hardware_events(
 
         if let Some(new_gpus) = update_gpu_cache(&cache).await {
             if let Err(e) = emit_gpu_signal(&connection, new_gpus).await {
-                eprintln!("Failed to emit D-Bus signal: {e}");
+                log::warn!("Failed to emit D-Bus signal: {e}");
             } else {
-                println!("Hardware event processed. GPUs updated.");
+                log::info!("Hardware event processed. GPUs updated.");
             }
         }
     }
-    println!("GPU sync task shut down.");
+    log::info!("GPU sync task shut down.");
 }
 
 /// Non-blocking worker thread dedicated to watching Linux udev events

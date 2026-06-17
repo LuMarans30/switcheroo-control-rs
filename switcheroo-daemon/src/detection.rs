@@ -116,7 +116,7 @@ pub fn scan_drm_cards() -> Vec<GpuDevice> {
         let driver = parent.driver().and_then(|s| s.to_str()).unwrap_or("");
         let discrete = get_card_is_discrete(&device)
             || crate::helpers::probe(devnode, driver).unwrap_or_else(|e| {
-                eprintln!("Failed to probe discrete status for {driver} at {devnode}: {e}");
+                log::warn!("Failed to probe discrete status for {driver} at {devnode}: {e}");
                 false
             });
 

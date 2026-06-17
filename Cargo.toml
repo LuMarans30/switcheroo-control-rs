@@ -18,6 +18,9 @@ udev = { version = "0.9.3", features = ["sync"] }
 regex = "1.12.4"
 nix = { version = "0.31.3", features = ["ioctl"] }
 futures-lite = "2.6.1"
+log = "0.4.32"
+env_logger = "0.11.10"
+systemd-journal-logger = "2.2.2"
 switcheroo-common = { path = "switcheroo-common" }
 
 [workspace.lints.clippy]

@@ -16,6 +16,8 @@ udev = { workspace = true }
 regex = { workspace = true }
 nix = { workspace = true }
 futures-lite = { workspace = true }
+log = { workspace = true }
+systemd-journal-logger = { workspace = true }
 
 [lints]
 workspace = true

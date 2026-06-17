@@ -9,7 +9,7 @@ use client::SwitcherooProxy;
 use zbus::proxy::ProxyDefault;
 
 use std::os::unix::process::CommandExt;
-use std::process::{Command, exit};
+use std::process::Command;
 
 #[derive(Parser)]
 #[command(version, about = "Switcheroo CLI utility")]
@@ -40,6 +40,7 @@ enum Commands {
 #[tokio::main]
 async fn main() -> Result<()> {
     color_eyre::install()?;
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
     let cli = Cli::parse();
 
@@ -101,6 +102,5 @@ fn launch_on_gpu(gpus: &[GpuDevice], gpu: Option<u32>, args: &[String]) -> Resul
     target_gpu.apply_env(cmd.args(&args[1..]));
 
     let err = cmd.exec();
-    eprintln!("switcherooctl: failed to execute '{}': {}", args[0], err);
-    exit(1)
+    Err(eyre!("failed to execute '{}': {}", args[0], err))
 }
