@@ -1,3 +1,26 @@
+## [0.1.3] - 2026-06-17
+
+### 🚀 Features
+
+- Add systemd and dbus files ([`de8c60e`](https://github.com/LuMarans30/switcheroo-control-rs/commit/de8c60e3ff9efb9ffb32f0f47c52c19de96c1abf))
+
+### 🐛 Bug Fixes
+
+- *(daemon)* Handle probing errors ([`ccf451b`](https://github.com/LuMarans30/switcheroo-control-rs/commit/ccf451ba579994fc69d8750ebda9b3e7ec6c87e6))
+- *(client)* Handle SwitcherooProxy DESTINATION error better ([`44bf8fe`](https://github.com/LuMarans30/switcheroo-control-rs/commit/44bf8fee9ea23b85604f60272e35f50d4109f62c))
+- *(daemon)* Continue run_udev_monitor when channel is full ([`0d1a354`](https://github.com/LuMarans30/switcheroo-control-rs/commit/0d1a3549ebc59a408c654b81f4b267dd4d86c2ed))
+- *(client)* Return error if the first argument is not set ([`233fbc3`](https://github.com/LuMarans30/switcheroo-control-rs/commit/233fbc3eb06d637ab46b8e7d6668e08158988eda))
+- Remove comment from D-Bus conf ([`6251703`](https://github.com/LuMarans30/switcheroo-control-rs/commit/6251703c1d6fb5f08b5d24bedd0c693ccf42589d))
+
+### ⚡ Performance
+
+- *(daemon)* Allocate DISCRETE_TAG only once ([`4dd092d`](https://github.com/LuMarans30/switcheroo-control-rs/commit/4dd092d11cc7398ca2c37b178213cd220ff20c1d))
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* Update cliff.toml and CHANGELOG ([`7b4831b`](https://github.com/LuMarans30/switcheroo-control-rs/commit/7b4831bbf4316438347b2fa8a73cf051346ad461))
+- *(client)* Simplify args code ([`1c95cd8`](https://github.com/LuMarans30/switcheroo-control-rs/commit/1c95cd839d0a7377d3092581aff22a0c0be5c6d0))
+- *(common)* Improve code readability ([`8a844e5`](https://github.com/LuMarans30/switcheroo-control-rs/commit/8a844e5e9b54f0c5fef2e63255d4f6640bf0bf14))
 ## [0.1.2] - 2026-06-13
 
 ### ⚙️ Miscellaneous Tasks
