@@ -29,6 +29,9 @@ mod detection;
 mod helpers;
 mod info_cleanup;
 
+#[cfg(test)]
+mod tests;
+
 use switcheroo_common::GpuDevice;
 
 const DBUS_NAME: &str = "net.hadess.SwitcherooControl";
