@@ -192,7 +192,7 @@ async fn emit_gpu_signal(connection: &Connection, gpus: Vec<GpuDevice>) -> Resul
         .interface::<_, SwitcherooServer>(DBUS_PATH)
         .await?;
 
-    let emitter = iface_ref.signal_context();
+    let emitter = iface_ref.signal_emitter();
 
     let num_gpus: u32 = gpus.len().try_into()?;
     let has_dual_gpu = num_gpus >= 2;
@@ -200,12 +200,12 @@ async fn emit_gpu_signal(connection: &Connection, gpus: Vec<GpuDevice>) -> Resul
     Properties::properties_changed(
         emitter,
         SwitcherooServer::name(),
-        &HashMap::from([
-            ("GPUs", &Value::from(gpus)),
-            ("NumGPUs", &Value::from(num_gpus)),
-            ("HasDualGpu", &Value::from(has_dual_gpu)),
+        HashMap::from([
+            ("GPUs", Value::from(gpus)),
+            ("NumGPUs", Value::from(num_gpus)),
+            ("HasDualGpu", Value::from(has_dual_gpu)),
         ]),
-        &[],
+        std::borrow::Cow::Borrowed(&[]),
     )
     .await?;
 

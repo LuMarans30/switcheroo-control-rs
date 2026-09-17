@@ -2,7 +2,7 @@
 
 use std::{collections::HashMap, fmt};
 
-use zbus::zvariant::{OwnedValue, Type, Value};
+use zbus::zvariant::{OwnedValue, Signature, Type, Value, signature::Child};
 
 use crate::env_var::EnvVar;
 
@@ -23,9 +23,14 @@ impl GpuDevice {
 }
 
 impl Type for GpuDevice {
-    fn signature() -> zbus::zvariant::Signature<'static> {
-        zbus::zvariant::Signature::from_static_str("a{sv}").unwrap()
-    }
+    const SIGNATURE: &'static Signature = &Signature::Dict {
+        key: Child::Static {
+            child: &Signature::Str,
+        },
+        value: Child::Static {
+            child: &Signature::Variant,
+        },
+    };
 }
 
 impl From<GpuDevice> for Value<'_> {
@@ -70,16 +75,10 @@ impl TryFrom<Value<'_>> for GpuDevice {
         if let Some(env_value) = dict.get::<&str, &Value>(&"Environment")?
             && let Value::Array(arr) = env_value
         {
-            let vals: Vec<String> = arr
-                .iter()
-                .filter_map(|v| String::try_from(v).ok())
-                .collect();
+            let mut vals = arr.iter().filter_map(|v| String::try_from(v).ok());
 
-            for chunk in vals.chunks_exact(2) {
-                environment.push(EnvVar {
-                    key: chunk[0].clone(),
-                    value: chunk[1].clone(),
-                });
+            while let (Some(key), Some(value)) = (vals.next(), vals.next()) {
+                environment.push(EnvVar { key, value });
             }
         }
 
